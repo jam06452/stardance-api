@@ -26,6 +26,7 @@ defmodule Stardance.Schema.User do
   def changeset(user, attrs) do
     user
     |> cast(attrs, [
+      :id,
       :username,
       :user_pfp,
       :bio,
