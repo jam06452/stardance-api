@@ -28,6 +28,7 @@ defmodule Stardance.Utils do
       |> Floki.find(".project-show__banner-image")
       |> Floki.attribute("src")
       |> List.first()
+      |> shorten()
 
     user_id_text =
       document
@@ -76,8 +77,13 @@ defmodule Stardance.Utils do
       panel_links
       |> Enum.find(fn node -> Floki.text(node) =~ ~r/Demo|Website/i end)
       |> case do
-        nil -> nil
-        node -> Floki.attribute(node, "href") |> List.first()
+        nil ->
+          nil
+
+        node ->
+          Floki.attribute(node, "href")
+          |> List.first()
+          |> shorten()
       end
 
     sourcecode =
@@ -88,7 +94,7 @@ defmodule Stardance.Utils do
       end)
       |> case do
         nil -> nil
-        node -> Floki.attribute(node, "href") |> List.first()
+        node -> Floki.attribute(node, "href") |> List.first() |> shorten()
       end
 
     superstar =
@@ -138,6 +144,7 @@ defmodule Stardance.Utils do
       |> Floki.find(".profile__avatar")
       |> Floki.attribute("src")
       |> List.first()
+      |> shorten()
 
     bio =
       document
@@ -150,12 +157,14 @@ defmodule Stardance.Utils do
       |> Floki.find(".profile__banner-image")
       |> Floki.attribute("src")
       |> List.first()
+      |> shorten()
 
     slack_url =
       document
       |> Floki.find("a[href*='slack.com']")
       |> Floki.attribute("href")
       |> List.first()
+      |> shorten()
 
     # 2. Stats (Devlogs, Projects, Ships, Votes)
     stats =
@@ -201,6 +210,13 @@ defmodule Stardance.Utils do
       votes: Map.get(stats, "votes", 0),
       slack_url: slack_url
     }
+  end
+
+  def shorten(url) do
+    %{body: %{"encoded" => encoded}} =
+      Req.post!("https://url.jam06452.uk/make_url", json: %{"url" => url})
+
+    "https://url.jam06452.uk/" <> encoded
   end
 
   defp parse_int(text) when is_binary(text) do
