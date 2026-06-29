@@ -20,6 +20,13 @@ defmodule StardanceWeb.Router do
     get "/", PageController, :home
   end
 
+  scope "/api/v1", StardanceWeb do
+    pipe_through :api
+
+    get "/projects/:id", API.V1Controller, :projects
+    get "/users/:username", API.V1Controller, :users
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", StardanceWeb do
   #   pipe_through :api
