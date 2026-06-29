@@ -1,5 +1,12 @@
 import Config
+import Dotenvy
 
+source!([
+  ".env",
+  System.get_env()
+])
+
+config :stardance, :stardance_cookie, env!("STARDANCE_COOKIE", :string!)
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
