@@ -15,9 +15,19 @@ defmodule Stardance.DB do
   end
 
   def get_project(id) do
-    case Repo.get(Project, id) |> Repo.preload(:user) do
-      %Project{} = project -> {:ok, normalize_project(project)}
-      nil -> fetch_and_store_project(id)
+    case Repo.get(Project, id) |> Repo.preload([:user, :devlogs]) do
+      %Project{} = project ->
+        {:ok, normalize_project(project)}
+
+      nil ->
+        fetch_and_store_project(id)
+    end
+  end
+
+  def get_devlog_by_id(id) do
+    case Repo.get(Devlog, id) do
+      %Devlog{} = devlog -> {:ok, normalize_devlog(devlog)}
+      nil -> {:error, :not_found}
     end
   end
 
@@ -38,15 +48,38 @@ defmodule Stardance.DB do
   defp fetch_and_store_user(username) do
     with {:ok, data} <- Stardance.Utils.get_user(username),
          {:ok, saved_user} <- write_record(:user, data) do
+      # Best-effort cascade: scrape and store each project referenced by the user.
+      _ = scrape_and_store_projects(data.project_ids, saved_user.id)
+
       {:ok, normalize_user(saved_user)}
     end
   end
+
+  defp scrape_and_store_projects(project_ids, user_id) when is_list(project_ids) do
+    Task.async_stream(
+      project_ids,
+      fn project_id ->
+        with {:ok, data} <- Stardance.Utils.get_project(project_id),
+             data_with_user = Map.put(data, :user_id, user_id),
+             {:ok, _project} <- write_record(:project, data_with_user) do
+          scrape_and_store_devlogs(project_id, data.devlog_ids, user_id)
+        end
+      end,
+      timeout: :infinity
+    )
+    |> Stream.run()
+  end
+
+  defp scrape_and_store_projects(_project_ids, _user_id), do: :ok
 
   defp fetch_and_store_project(id) do
     with {:ok, data} <- Stardance.Utils.get_project(id),
          user_id when not is_nil(user_id) <- get_user_id(data.username),
          data_with_user = Map.put(data, :user_id, user_id),
          {:ok, project} <- write_record(:project, data_with_user) do
+      # Best-effort cascade: scrape and store each devlog referenced by the project.
+      _ = scrape_and_store_devlogs(id, data.devlog_ids, user_id)
+
       project_with_assoc = %{project | user: %User{username: data.username}}
       {:ok, normalize_project(project_with_assoc)}
     else
@@ -55,9 +88,39 @@ defmodule Stardance.DB do
     end
   end
 
+  defp fetch_and_store_devlog(project_id, devlog_id) do
+    with {:ok, data} <- Stardance.Utils.get_devlog(project_id, devlog_id),
+         user_id when not is_nil(user_id) <- get_user_id(data.username),
+         data_with_user = Map.put(data, :user_id, user_id),
+         {:ok, devlog} <- write_record(:devlog, data_with_user) do
+      {:ok, normalize_devlog(devlog)}
+    else
+      nil -> {:error, :user_id_resolution_failed}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp scrape_and_store_devlogs(project_id, devlog_ids, user_id) when is_list(devlog_ids) do
+    Task.async_stream(
+      devlog_ids,
+      fn devlog_id ->
+        with {:ok, data} <- Stardance.Utils.get_devlog(project_id, devlog_id),
+             data_with_user = Map.put(data, :user_id, user_id) do
+          write_record(:devlog, data_with_user)
+        end
+      end,
+      timeout: :infinity
+    )
+    |> Stream.run()
+  end
+
+  defp scrape_and_store_devlogs(_project_id, _devlog_ids, _user_id), do: :ok
+
   defp get_user_id(nil), do: nil
 
   defp get_user_id(username) do
+    username = String.trim_leading(username, "@")
+
     case Repo.one(from u in User, where: u.username == ^username, select: u.id) do
       nil ->
         case get_user(username) do
@@ -74,7 +137,7 @@ defmodule Stardance.DB do
     result =
       struct(schema_module)
       |> schema_module.changeset(attrs)
-      |> Repo.insert()
+      |> Repo.insert(on_conflict: :nothing, conflict_target: :id)
 
     case result do
       {:error, changeset} ->
@@ -104,6 +167,18 @@ defmodule Stardance.DB do
   end
 
   defp normalize_project(%Project{} = project) do
+    devlog_ids =
+      cond do
+        project.devlog_ids != nil and project.devlog_ids != [] ->
+          project.devlog_ids
+
+        Ecto.assoc_loaded?(project.devlogs) ->
+          Enum.map(project.devlogs, & &1.id)
+
+        true ->
+          []
+      end
+
     %{
       id: project.id,
       description: project.description || "",
@@ -111,11 +186,25 @@ defmodule Stardance.DB do
       username: if(Ecto.assoc_loaded?(project.user), do: project.user.username, else: nil),
       banner_url: project.banner_url,
       devlog_count: project.devlog_count || 0,
+      devlog_ids: devlog_ids,
       total_hours: project.total_hours || 0.0,
       followers: project.followers || 0,
       demo_url: project.demo_url,
       sourcecode: project.source_code,
       superstar: project.super_star || false
+    }
+  end
+
+  defp normalize_devlog(%Devlog{} = devlog) do
+    %{
+      id: devlog.id,
+      description: devlog.description || "",
+      image_urls: devlog.image_urls || [],
+      likes: devlog.likes || 0,
+      views: devlog.views || 0,
+      duration_seconds: devlog.duration_seconds || 0,
+      project_id: devlog.project_id,
+      user_id: devlog.user_id
     }
   end
 end

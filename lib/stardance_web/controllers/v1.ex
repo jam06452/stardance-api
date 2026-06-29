@@ -18,4 +18,13 @@ defmodule StardanceWeb.API.V1Controller do
       {:error, reason} -> send_resp(conn, reason, "")
     end
   end
+
+  def devlogs(conn, %{"id" => id}) do
+    data = Stardance.DB.get_devlog_by_id(id)
+
+    case data do
+      {:ok, data} -> json(conn, data)
+      {:error, reason} -> send_resp(conn, reason, "")
+    end
+  end
 end

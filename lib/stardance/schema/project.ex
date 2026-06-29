@@ -12,6 +12,7 @@ defmodule Stardance.Schema.Project do
     field :demo_url, :string
     field :source_code, :string
     field :followers, :integer, default: 0
+    field :devlog_ids, {:array, :integer}, default: []
     field :super_star, :boolean, default: false
 
     belongs_to :user, Stardance.Schema.User, type: :binary_id
@@ -32,6 +33,7 @@ defmodule Stardance.Schema.Project do
       :demo_url,
       :source_code,
       :followers,
+      :devlog_ids,
       :super_star,
       :user_id
     ])

@@ -25,6 +25,7 @@ defmodule StardanceWeb.Router do
 
     get "/projects/:id", API.V1Controller, :projects
     get "/users/:username", API.V1Controller, :users
+    get "/devlogs/:id", API.V1Controller, :devlogs
   end
 
   # Other scopes may use custom stacks.

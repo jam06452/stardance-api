@@ -9,6 +9,13 @@ defmodule Stardance.Utils do
     end
   end
 
+  def get_devlog(project_id, devlog_id) do
+    case fetch_document("/projects/#{project_id}/devlogs/#{devlog_id}") do
+      {:ok, document} -> {:ok, parse_devlog_doc(project_id, devlog_id, document)}
+      error -> error
+    end
+  end
+
   def get_user(username) do
     case fetch_document("/@#{username}") do
       {:ok, document} -> {:ok, parse_user_doc(username, document)}
@@ -83,6 +90,15 @@ defmodule Stardance.Utils do
       |> Floki.find("[class*='superstar' i], [alt*='superstar' i]")
       |> Enum.any?()
 
+    devlog_ids =
+      document
+      |> Floki.find("a.feed-post-card__overlay-link[href*='/devlogs/']")
+      |> Enum.map(fn node -> Floki.attribute(node, "href") |> List.first() end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.map(&parse_devlog_id_from_href/1)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
     %{
       id: id,
       title: title,
@@ -94,6 +110,7 @@ defmodule Stardance.Utils do
       demo_url: demo_url,
       sourcecode: sourcecode,
       followers: followers,
+      devlog_ids: devlog_ids,
       superstar: superstar
     }
   end
@@ -151,6 +168,85 @@ defmodule Stardance.Utils do
     |> Enum.reject(&is_nil/1)
     |> Enum.map(&parse_int/1)
     |> Enum.uniq()
+  end
+
+  defp parse_devlog_id_from_href(href) do
+    case Regex.run(~r{/devlogs/(\d+)}, href) do
+      [_, id_str] -> parse_int(id_str)
+      _ -> nil
+    end
+  end
+
+  defp parse_devlog_doc(project_id, devlog_id, document) do
+    # Only take the first `.feed-post-card__body` to avoid duplicating text from the
+    # composer-modal quote preview inside `<dialog>`.
+    description =
+      case Floki.find(document, ".feed-post-card__body") do
+        [] -> ""
+        [node | _] -> Floki.text(node) |> String.trim()
+      end
+
+    image_urls =
+      document
+      |> Floki.find(".feed-post-card__image")
+      |> Enum.map(fn node -> Floki.attribute(node, "src") |> List.first() end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.map(&shorten/1)
+
+    likes =
+      extract_text(document, ".like-button__count") |> parse_int()
+
+    views =
+      case Floki.find(document, ".feed-post-card__action--disabled[title*='Unique viewers']") do
+        [node | _] -> node |> Floki.text() |> String.trim() |> parse_int()
+        _ -> 0
+      end
+
+    duration_seconds =
+      case extract_text(document, ".feed-post-card__duration") |> parse_duration() do
+        {:ok, seconds} -> seconds
+        :error -> 0
+      end
+
+    username =
+      document
+      |> Floki.find("a.feed-post-card__author")
+      |> Enum.map(&(&1 |> Floki.attribute("href") |> List.first()))
+      |> List.first()
+      |> case do
+        nil -> nil
+        href -> String.trim_leading(href, "/@")
+      end
+
+    %{
+      id: devlog_id,
+      project_id: project_id,
+      username: username,
+      description: description,
+      image_urls: image_urls,
+      likes: likes,
+      views: views,
+      duration_seconds: duration_seconds
+    }
+  end
+
+  defp parse_duration(nil), do: :error
+
+  defp parse_duration(text) do
+    text = String.trim(text)
+
+    regex = ~r/(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:(\d+)s)?/i
+
+    case Regex.run(regex, text, capture: :all_but_first) do
+      [h, m, s] ->
+        {:ok,
+         parse_int(h) * 3600 +
+           parse_int(m) * 60 +
+           parse_int(s)}
+
+      _ ->
+        :error
+    end
   end
 
   defp parse_int(text) when is_binary(text) do
