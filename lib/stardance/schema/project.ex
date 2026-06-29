@@ -2,6 +2,7 @@ defmodule Stardance.Schema.Project do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @primary_key {:id, :integer, autogenerate: false}
   schema "projects" do
     field :title, :string
     field :description, :string
@@ -22,6 +23,7 @@ defmodule Stardance.Schema.Project do
   def changeset(project, attrs) do
     project
     |> cast(attrs, [
+      :id,
       :title,
       :description,
       :devlog_count,
