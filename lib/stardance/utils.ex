@@ -1,101 +1,82 @@
 defmodule Stardance.Utils do
+  @base_url "https://stardance.hackclub.com"
+  @user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
   def get_project(id) do
+    case fetch_document("/projects/#{id}") do
+      {:ok, document} -> {:ok, parse_project_doc(id, document)}
+      error -> error
+    end
+  end
+
+  def get_user(username) do
+    case fetch_document("/@#{username}") do
+      {:ok, document} -> {:ok, parse_user_doc(username, document)}
+      error -> error
+    end
+  end
+
+  def shorten(nil), do: nil
+
+  def shorten(url) do
+    %{body: %{"encoded" => encoded}} =
+      Req.post!("https://url.jam06452.uk/make_url", json: %{"url" => url})
+
+    "https://url.jam06452.uk/" <> encoded
+  end
+
+  defp fetch_document(path) do
     cookie = Application.fetch_env!(:stardance, :stardance_cookie)
 
     headers = [
       {"cookie", "_stardance_session_v3=#{cookie}"},
-      {"user-agent",
-       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+      {"user-agent", @user_agent}
     ]
 
-    response = Req.get!("https://stardance.hackclub.com/projects/#{id}", headers: headers)
-    {:ok, document} = Floki.parse_document(response.body)
+    case Req.get(@base_url <> path, headers: headers) do
+      {:ok, %{status: 200, body: body}} ->
+        Floki.parse_document(body)
 
-    title =
-      document
-      |> Floki.find(".project-show__title")
-      |> Floki.text()
-      |> String.trim()
+      {:ok, %{status: status}} ->
+        {:error, status}
 
-    description =
-      document
-      |> Floki.find(".project-show__description")
-      |> Floki.text()
-      |> String.trim()
+      {:error, exception} ->
+        {:error, exception}
+    end
+  end
 
-    banner_url =
-      document
-      |> Floki.find(".project-show__banner-image")
-      |> Floki.attribute("src")
-      |> List.first()
-      |> shorten()
+  defp parse_project_doc(id, document) do
+    title = extract_text(document, ".project-show__title")
+    description = extract_text(document, ".project-show__description")
+    username = extract_text(document, "a.project-show__author")
 
-    user_id_text =
-      document
-      |> Floki.find("meta[property='og:image']")
-      |> Floki.attribute("content")
-      |> List.first()
-
-    user_id =
-      if user_id_text do
-        case Regex.run(~r/users\/(\d+)/, user_id_text) do
-          [_, id_str] -> parse_int(id_str)
-          _ -> nil
-        end
-      else
-        nil
-      end
+    banner_url = extract_attr(document, ".project-show__banner-image", "src") |> shorten()
 
     stats =
-      document
-      |> Floki.find(".project-show__stats-item")
-      |> Enum.reduce(%{}, fn node, acc ->
-        num = node |> Floki.find(".project-show__stats-num") |> Floki.text() |> String.trim()
-
-        label =
-          node
-          |> Floki.find(".project-show__stats-label")
-          |> Floki.text()
-          |> String.trim()
-          |> String.downcase()
-
-        Map.put(acc, label, num)
+      Map.new(Floki.find(document, ".project-show__stats-item"), fn node ->
+        num = extract_text(node, ".project-show__stats-num")
+        label = extract_text(node, ".project-show__stats-label") |> String.downcase()
+        {label, num}
       end)
 
-    devlog_count = Map.get(stats, "devlogs", "0") |> parse_int()
-    total_hours = Map.get(stats, "total hours", "0") |> parse_float()
-
-    followers =
-      document
-      |> Floki.find(".project-show__followers strong")
-      |> Floki.text()
-      |> parse_int()
+    followers = extract_text(document, ".project-show__followers strong") |> parse_int()
 
     panel_links = Floki.find(document, ".project-show__panel-actions a")
 
     demo_url =
       panel_links
       |> Enum.find(fn node -> Floki.text(node) =~ ~r/Demo|Website/i end)
-      |> case do
-        nil ->
-          nil
-
-        node ->
-          Floki.attribute(node, "href")
-          |> List.first()
-          |> shorten()
-      end
+      |> extract_first_href()
+      |> shorten()
 
     sourcecode =
       panel_links
       |> Enum.find(fn node ->
         Floki.text(node) =~ ~r/Source|Code/i or
-          Floki.attribute(node, "href") |> List.first() =~ ~r/github\.com/
+          extract_first_href(node) =~ ~r/github\.com/
       end)
-      |> case do
-        nil -> nil
-        node -> Floki.attribute(node, "href") |> List.first() |> shorten()
-      end
+      |> extract_first_href()
+      |> shorten()
 
     superstar =
       document
@@ -105,10 +86,10 @@ defmodule Stardance.Utils do
     %{
       id: id,
       title: title,
-      user_id: user_id,
+      username: username,
       description: description,
-      devlog_count: devlog_count,
-      total_hours: total_hours,
+      devlog_count: Map.get(stats, "devlogs", "0") |> parse_int(),
+      total_hours: Map.get(stats, "total hours", "0") |> parse_float(),
       banner_url: banner_url,
       demo_url: demo_url,
       sourcecode: sourcecode,
@@ -117,88 +98,29 @@ defmodule Stardance.Utils do
     }
   end
 
-  def get_user(username) do
-    cookie = Application.fetch_env!(:stardance, :stardance_cookie)
+  defp parse_user_doc(username, document) do
+    extracted = extract_text(document, ".profile__handle") |> String.trim_leading("@")
+    final_username = if extracted == "", do: username, else: extracted
 
-    headers = [
-      {"cookie", "_stardance_session_v3=#{cookie}"},
-      {"user-agent",
-       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
-    ]
+    user_pfp = extract_attr(document, ".profile__avatar", "src") |> shorten()
+    banner_url = extract_attr(document, ".profile__banner-image", "src") |> shorten()
+    slack_url = extract_attr(document, "a[href*='slack.com']", "href") |> shorten()
+    bio = extract_text(document, ".profile__bio")
 
-    response =
-      Req.get!("https://stardance.hackclub.com/@#{username}",
-        headers: headers
-      )
-
-    {:ok, document} = Floki.parse_document(response.body)
-
-    extracted_username =
-      document
-      |> Floki.find(".profile__handle")
-      |> Floki.text()
-      |> String.trim_leading("@")
-
-    user_pfp =
-      document
-      |> Floki.find(".profile__avatar")
-      |> Floki.attribute("src")
-      |> List.first()
-      |> shorten()
-
-    bio =
-      document
-      |> Floki.find(".profile__bio")
-      |> Floki.text()
-      |> String.trim()
-
-    banner_url =
-      document
-      |> Floki.find(".profile__banner-image")
-      |> Floki.attribute("src")
-      |> List.first()
-      |> shorten()
-
-    slack_url =
-      document
-      |> Floki.find("a[href*='slack.com']")
-      |> Floki.attribute("href")
-      |> List.first()
-      |> shorten()
-
-    # 2. Stats (Devlogs, Projects, Ships, Votes)
     stats =
-      document
-      |> Floki.find(".profile__stat")
-      |> Enum.reduce(%{}, fn node, acc ->
-        num = node |> Floki.find(".profile__stat-num") |> Floki.text() |> parse_int()
-        label = node |> Floki.find(".profile__stat-label") |> Floki.text() |> String.downcase()
-
-        Map.put(acc, label, num)
+      Map.new(Floki.find(document, ".profile__stat"), fn node ->
+        num = extract_text(node, ".profile__stat-num") |> parse_int()
+        label = extract_text(node, ".profile__stat-label") |> String.downcase()
+        {label, num}
       end)
 
     feed_cards = Floki.find(document, ".feed-post-card")
 
-    project_ids =
-      feed_cards
-      |> Enum.map(fn card ->
-        Floki.attribute(card, "data-feed-engagement-project-id-value") |> List.first()
-      end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.map(&parse_int/1)
-      |> Enum.uniq()
-
-    devlog_ids =
-      feed_cards
-      |> Enum.map(fn card ->
-        Floki.attribute(card, "data-feed-engagement-post-id-value") |> List.first()
-      end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.map(&parse_int/1)
-      |> Enum.uniq()
+    project_ids = extract_feed_ids(feed_cards, "data-feed-engagement-project-id-value")
+    devlog_ids = extract_feed_ids(feed_cards, "data-feed-engagement-post-id-value")
 
     %{
-      username: if(extracted_username == "", do: username, else: extracted_username),
+      username: final_username,
       user_pfp: user_pfp,
       bio: bio,
       banner_url: banner_url,
@@ -212,11 +134,23 @@ defmodule Stardance.Utils do
     }
   end
 
-  def shorten(url) do
-    %{body: %{"encoded" => encoded}} =
-      Req.post!("https://url.jam06452.uk/make_url", json: %{"url" => url})
+  defp extract_text(tree, selector) do
+    tree |> Floki.find(selector) |> Floki.text() |> String.trim()
+  end
 
-    "https://url.jam06452.uk/" <> encoded
+  defp extract_attr(tree, selector, attribute) do
+    tree |> Floki.find(selector) |> Floki.attribute(attribute) |> List.first()
+  end
+
+  defp extract_first_href(nil), do: nil
+  defp extract_first_href(node), do: Floki.attribute(node, "href") |> List.first()
+
+  defp extract_feed_ids(cards, attribute) do
+    cards
+    |> Enum.map(fn card -> Floki.attribute(card, attribute) |> List.first() end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&parse_int/1)
+    |> Enum.uniq()
   end
 
   defp parse_int(text) when is_binary(text) do
