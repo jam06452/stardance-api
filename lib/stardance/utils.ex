@@ -111,32 +111,6 @@ defmodule Stardance.Utils do
     }
   end
 
-  defp parse_int(text) when is_binary(text) do
-    case Integer.parse(String.trim(text)) do
-      {int, _} -> int
-      :error -> 0
-    end
-  end
-
-  defp parse_int(_), do: 0
-
-  defp parse_float(text) when is_binary(text) do
-    text = String.trim(text)
-
-    case Float.parse(text) do
-      {float, _} ->
-        float
-
-      :error ->
-        case Integer.parse(text) do
-          {int, _} -> int * 1.0
-          :error -> 0.0
-        end
-    end
-  end
-
-  defp parse_float(_), do: 0.0
-
   def get_user(username) do
     cookie = Application.fetch_env!(:stardance, :stardance_cookie)
 
@@ -237,4 +211,21 @@ defmodule Stardance.Utils do
   end
 
   defp parse_int(_), do: 0
+
+  defp parse_float(text) when is_binary(text) do
+    text = String.trim(text)
+
+    case Float.parse(text) do
+      {float, _} ->
+        float
+
+      :error ->
+        case Integer.parse(text) do
+          {int, _} -> int * 1.0
+          :error -> 0.0
+        end
+    end
+  end
+
+  defp parse_float(_), do: 0.0
 end
