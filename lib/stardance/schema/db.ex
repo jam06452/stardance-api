@@ -88,18 +88,6 @@ defmodule Stardance.DB do
     end
   end
 
-  defp fetch_and_store_devlog(project_id, devlog_id) do
-    with {:ok, data} <- Stardance.Utils.get_devlog(project_id, devlog_id),
-         user_id when not is_nil(user_id) <- get_user_id(data.username),
-         data_with_user = Map.put(data, :user_id, user_id),
-         {:ok, devlog} <- write_record(:devlog, data_with_user) do
-      {:ok, normalize_devlog(devlog)}
-    else
-      nil -> {:error, :user_id_resolution_failed}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
   defp scrape_and_store_devlogs(project_id, devlog_ids, user_id) when is_list(devlog_ids) do
     Task.async_stream(
       devlog_ids,
