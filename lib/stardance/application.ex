@@ -12,9 +12,7 @@ defmodule Stardance.Application do
       Stardance.Repo,
       {DNSCluster, query: Application.get_env(:stardance, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Stardance.PubSub},
-      # Start a worker by calling: Stardance.Worker.start_link(arg)
-      # {Stardance.Worker, arg},
-      # Start to serve requests, typically the last entry
+      {Task.Supervisor, name: Stardance.ScrapeSupervisor},
       StardanceWeb.Endpoint
     ]
 

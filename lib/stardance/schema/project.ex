@@ -14,6 +14,7 @@ defmodule Stardance.Schema.Project do
     field :followers, :integer, default: 0
     field :devlog_ids, {:array, :integer}, default: []
     field :super_star, :boolean, default: false
+    field :last_scraped_at, :utc_datetime
 
     belongs_to :user, Stardance.Schema.User, type: :binary_id
     has_many :devlogs, Stardance.Schema.Devlog
@@ -35,7 +36,8 @@ defmodule Stardance.Schema.Project do
       :followers,
       :devlog_ids,
       :super_star,
-      :user_id
+      :user_id,
+      :last_scraped_at
     ])
     |> validate_required([:title, :user_id])
     |> foreign_key_constraint(:user_id)

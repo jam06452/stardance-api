@@ -16,6 +16,7 @@ defmodule Stardance.Schema.User do
     field :ships, :integer, default: 0
     field :votes, :integer, default: 0
     field :slack_url, :string
+    field :last_scraped_at, :utc_datetime
 
     has_many :projects, Stardance.Schema.Project
     has_many :devlogs, Stardance.Schema.Devlog
@@ -37,7 +38,8 @@ defmodule Stardance.Schema.User do
       :devlog_ids,
       :ships,
       :votes,
-      :slack_url
+      :slack_url,
+      :last_scraped_at
     ])
     |> validate_required([:username])
     |> unique_constraint(:username)
