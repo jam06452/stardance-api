@@ -84,10 +84,16 @@ defmodule Stardance.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["compile", "tailwind stardance", "esbuild stardance"],
+      "assets.build": [
+        "compile",
+        "tailwind stardance",
+        "esbuild stardance",
+        "cmd cp assets/vendor/api-reference.js priv/static/assets/js/api-reference.js"
+      ],
       "assets.deploy": [
         "tailwind stardance --minify",
         "esbuild stardance --minify",
+        "cmd cp assets/vendor/api-reference.js priv/static/assets/js/api-reference.js",
         "phx.digest"
       ],
       precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]

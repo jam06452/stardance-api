@@ -50,6 +50,9 @@ COPY assets assets
 
 RUN mix assets.deploy
 
+# Copy Scalar API reference bundle as a standalone static asset
+COPY assets/vendor/api-reference.js priv/static/assets/js/api-reference.js
+
 COPY config/runtime.exs config/
 
 COPY rel rel
