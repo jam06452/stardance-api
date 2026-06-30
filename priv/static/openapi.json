@@ -1,0 +1,351 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Stardance API",
+    "version": "1.0.0",
+    "description": "API for accessing Stardance hackclub project data. All endpoints are read-only and return cached results. When cached data is older than 12 hours, the requested resource is re-scraped synchronously while cascading refreshes run in the background."
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Same-origin API"
+    }
+  ],
+  "paths": {
+    "/projects/{id}": {
+      "get": {
+        "operationId": "getProject",
+        "summary": "Get a project",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Project ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{id}/devlogs/{devlog_id}": {
+      "get": {
+        "operationId": "getProjectDevlog",
+        "summary": "Get a devlog scoped to a project",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Project ID",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "devlog_id",
+            "in": "path",
+            "required": true,
+            "description": "Devlog ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Devlog found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Devlog"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Devlog or project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{username}": {
+      "get": {
+        "operationId": "getUser",
+        "summary": "Get a user profile",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "description": "Username (with or without \"@\" prefix)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devlogs/{id}": {
+      "get": {
+        "operationId": "getDevlog",
+        "summary": "Get a devlog by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Devlog ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Devlog found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Devlog"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Devlog not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Project ID (from stardance.hackclub.com)"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "description": "Author's username (without @)"
+          },
+          "banner_url": {
+            "type": "string",
+            "nullable": true,
+            "format": "uri"
+          },
+          "devlog_count": {
+            "type": "integer"
+          },
+          "devlog_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "total_hours": {
+            "type": "number",
+            "format": "float"
+          },
+          "followers": {
+            "type": "integer"
+          },
+          "demo_url": {
+            "type": "string",
+            "nullable": true,
+            "format": "uri"
+          },
+          "sourcecode": {
+            "type": "string",
+            "nullable": true,
+            "format": "uri"
+          },
+          "superstar": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "devlog_count": {
+            "type": "integer"
+          },
+          "banner_url": {
+            "type": "string",
+            "nullable": true,
+            "format": "uri"
+          },
+          "user_pfp": {
+            "type": "string",
+            "nullable": true,
+            "format": "uri",
+            "description": "Profile picture URL"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "project_count": {
+            "type": "integer"
+          },
+          "project_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "devlog_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "ships": {
+            "type": "integer"
+          },
+          "votes": {
+            "type": "integer"
+          },
+          "slack_url": {
+            "type": "string",
+            "nullable": true,
+            "format": "uri"
+          }
+        },
+        "required": [
+          "user_id",
+          "username"
+        ]
+      },
+      "Devlog": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Devlog ID (from stardance.hackclub.com)"
+          },
+          "description": {
+            "type": "string"
+          },
+          "image_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "likes": {
+            "type": "integer"
+          },
+          "views": {
+            "type": "integer"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "description": "Duration in seconds"
+          },
+          "project_id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    }
+  }
+}

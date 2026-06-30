@@ -17,7 +17,7 @@ defmodule StardanceWeb.Router do
   scope "/", StardanceWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    get "/", PageController, :docs
   end
 
   scope "/api/v1", StardanceWeb do
