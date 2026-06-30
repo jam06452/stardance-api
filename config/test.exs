@@ -1,5 +1,8 @@
 import Config
 
+# Stardance cookie for API tests (placeholder, real API calls will fail)
+config :stardance, :stardance_cookie, "test"
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

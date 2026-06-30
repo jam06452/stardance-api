@@ -78,7 +78,11 @@ defmodule Stardance.DB do
   def get_project_devlog(project_id, devlog_id) do
     case Repo.get_by(Devlog, id: devlog_id, project_id: project_id) do
       nil ->
-        fetch_and_store_devlog(project_id, devlog_id)
+        # Ensure the project is scraped first before fetching the devlog
+        case get_project(project_id) do
+          {:ok, _project} -> fetch_and_store_devlog(project_id, devlog_id)
+          error -> error
+        end
 
       devlog ->
         if stale?(devlog) do

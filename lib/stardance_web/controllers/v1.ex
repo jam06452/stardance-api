@@ -35,8 +35,16 @@ defmodule StardanceWeb.API.V1Controller do
     |> json(%{error: "Resource not found"})
   end
 
+  defp send_error(conn, 404) do
+    conn
+    |> put_status(:not_found)
+    |> json(%{error: "Resource not found"})
+  end
+
   defp send_error(conn, status) when is_integer(status) do
-    send_resp(conn, status, "")
+    conn
+    |> put_status(status)
+    |> json(%{error: "Request failed with status #{status}"})
   end
 
   defp send_error(conn, reason) do
