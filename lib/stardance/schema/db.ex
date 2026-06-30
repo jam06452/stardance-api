@@ -31,6 +31,13 @@ defmodule Stardance.DB do
     end
   end
 
+  def get_project_devlog(project_id, devlog_id) do
+    case Repo.get_by(Devlog, id: devlog_id, project_id: project_id) do
+      %Devlog{} = devlog -> {:ok, normalize_devlog(devlog)}
+      nil -> {:error, :not_found}
+    end
+  end
+
   def write_record(:user, attrs), do: insert_record(User, attrs)
   def write_record(:project, attrs), do: insert_record(Project, attrs)
   def write_record(:devlog, attrs), do: insert_record(Devlog, attrs)

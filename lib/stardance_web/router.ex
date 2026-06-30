@@ -24,6 +24,7 @@ defmodule StardanceWeb.Router do
     pipe_through :api
 
     get "/projects/:id", API.V1Controller, :projects
+    get "/projects/:id/devlogs/:devlog_id", API.V1Controller, :project_devlog
     get "/users/:username", API.V1Controller, :users
     get "/devlogs/:id", API.V1Controller, :devlogs
   end
