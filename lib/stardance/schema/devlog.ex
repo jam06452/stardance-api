@@ -9,10 +9,12 @@ defmodule Stardance.Schema.Devlog do
     field :likes, :integer, default: 0
     field :views, :integer, default: 0
     field :duration_seconds, :integer, default: 0
+    field :comments_count, :integer, default: 0
     field :last_scraped_at, :utc_datetime
 
     belongs_to :user, Stardance.Schema.User, type: :binary_id
     belongs_to :project, Stardance.Schema.Project
+    has_many :comments, Stardance.Schema.Comment
 
     timestamps()
   end
@@ -26,6 +28,7 @@ defmodule Stardance.Schema.Devlog do
       :likes,
       :views,
       :duration_seconds,
+      :comments_count,
       :user_id,
       :project_id,
       :last_scraped_at

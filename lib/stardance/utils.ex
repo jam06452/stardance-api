@@ -177,6 +177,37 @@ defmodule Stardance.Utils do
     end
   end
 
+  def get_devlog_comments(devlog_id) do
+    case fetch_document("/devlogs/#{devlog_id}/comments") do
+      {:ok, document} -> {:ok, parse_comments_doc(devlog_id, document)}
+      error -> error
+    end
+  end
+
+  defp parse_comments_doc(devlog_id, document) do
+    comments =
+      document
+      |> Floki.find(".devlog-comment")
+      |> Enum.map(fn node ->
+        author =
+          node
+          |> Floki.find(".devlog-comment__author")
+          |> Floki.text()
+          |> String.trim()
+          |> String.trim_leading("@")
+
+        body =
+          node
+          |> Floki.find(".devlog-comment__body")
+          |> Floki.text()
+          |> String.trim()
+
+        %{author_username: author, body: body}
+      end)
+
+    %{devlog_id: devlog_id, comments: comments}
+  end
+
   defp parse_devlog_doc(project_id, devlog_id, document) do
     # Only take the first `.feed-post-card__body` to avoid duplicating text from the
     # composer-modal quote preview inside `<dialog>`.

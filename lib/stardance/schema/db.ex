@@ -2,7 +2,7 @@ defmodule Stardance.DB do
   import Ecto.Query
   require Logger
 
-  alias Stardance.Schema.{User, Project, Devlog}
+  alias Stardance.Schema.{User, Project, Devlog, Comment}
   alias Stardance.Repo
 
   @stale_hours 12
@@ -98,6 +98,7 @@ defmodule Stardance.DB do
   def write_record(:user, attrs), do: upsert_record(User, attrs)
   def write_record(:project, attrs), do: upsert_record(Project, attrs)
   def write_record(:devlog, attrs), do: upsert_record(Devlog, attrs)
+  def write_record(:comment, attrs), do: upsert_record(Comment, attrs)
 
   def write_record(schema, attrs) when is_binary(schema) do
     write_record(String.to_existing_atom(schema), attrs)
@@ -107,6 +108,65 @@ defmodule Stardance.DB do
 
   def write_record(unknown_table, _attrs) do
     {:error, "Unknown table or schema: #{inspect(unknown_table)}"}
+  end
+
+  def get_devlog_comments(devlog_id) do
+    query =
+      from c in Comment,
+        left_join: u in User,
+        on: c.user_id == u.id,
+        where: c.devlog_id == ^devlog_id,
+        select: %{
+          id: c.id,
+          body: c.body,
+          user: %{
+            id: u.id,
+            username: u.username,
+            user_pfp: u.user_pfp
+          }
+        }
+
+    comments = Repo.all(query)
+
+    if comments == [] do
+      case Repo.get(Devlog, devlog_id) do
+        nil -> {:error, :not_found}
+        _ -> {:ok, []}
+      end
+    else
+      {:ok, comments}
+    end
+  end
+
+  def get_project_comments(project_id) do
+    devlog_ids =
+      from(d in Devlog, where: d.project_id == ^project_id, select: d.id)
+      |> Repo.all()
+
+    if devlog_ids == [] do
+      case Repo.get(Project, project_id) do
+        nil -> {:error, :not_found}
+        _ -> {:ok, []}
+      end
+    else
+      query =
+        from c in Comment,
+          left_join: u in User,
+          on: c.user_id == u.id,
+          where: c.devlog_id in ^devlog_ids,
+          order_by: [desc: c.inserted_at],
+          select: %{
+            id: c.id,
+            body: c.body,
+            user: %{
+              id: u.id,
+              username: u.username,
+              user_pfp: u.user_pfp
+            }
+          }
+
+      {:ok, Repo.all(query)}
+    end
   end
 
   # Private helpers
@@ -153,6 +213,7 @@ defmodule Stardance.DB do
          user_id when not is_nil(user_id) <- get_user_id(data.username),
          data = data |> Map.put(:user_id, user_id) |> put_timestamp(),
          {:ok, devlog} <- upsert_record(Devlog, data) do
+      scrape_and_store_comments(devlog_id)
       {:ok, devlog}
     else
       nil -> {:error, :user_id_resolution_failed}
@@ -163,6 +224,43 @@ defmodule Stardance.DB do
   defp fetch_and_store_devlog(project_id, devlog_id) do
     with {:ok, devlog} <- refresh_devlog(project_id, devlog_id) do
       {:ok, normalize_devlog(devlog)}
+    end
+  end
+
+  defp scrape_and_store_comments(devlog_id) do
+    case Stardance.Utils.get_devlog_comments(devlog_id) do
+      {:ok, %{devlog_id: ^devlog_id, comments: comments}} ->
+        now = DateTime.utc_now()
+
+        Enum.each(comments, fn comment_data ->
+          user_id =
+            if comment_data.author_username not in [nil, ""] do
+              get_user_id(comment_data.author_username)
+            end
+
+          attrs =
+            comment_data
+            |> Map.put(:devlog_id, devlog_id)
+            |> Map.put(:scraped_at, now)
+            |> Map.put(:user_id, user_id)
+
+          upsert_record(Comment, attrs)
+        end)
+
+        # Update the devlog's comments_count
+        Repo.get_by(Devlog, id: devlog_id)
+        |> case do
+          nil ->
+            :ok
+
+          devlog ->
+            devlog
+            |> Devlog.changeset(%{comments_count: length(comments)})
+            |> Repo.update()
+        end
+
+      _ ->
+        :ok
     end
   end
 
@@ -192,6 +290,7 @@ defmodule Stardance.DB do
              user_id when not is_nil(user_id) <- get_user_id(data.username),
              data = data |> Map.put(:user_id, user_id) |> put_timestamp() do
           upsert_record(Devlog, data)
+          scrape_and_store_comments(devlog_id)
         end
       end,
       timeout: :infinity
@@ -224,6 +323,15 @@ defmodule Stardance.DB do
     |> Repo.insert(
       on_conflict: {:replace_all_except, [:id]},
       conflict_target: :username,
+      returning: true
+    )
+  end
+
+  defp upsert_record(Comment, attrs) do
+    struct(Comment)
+    |> Comment.changeset(attrs)
+    |> Repo.insert(
+      on_conflict: :nothing,
       returning: true
     )
   end
@@ -301,6 +409,7 @@ defmodule Stardance.DB do
       likes: devlog.likes || 0,
       views: devlog.views || 0,
       duration_seconds: devlog.duration_seconds || 0,
+      comments_count: devlog.comments_count || 0,
       project_id: devlog.project_id,
       user_id: devlog.user_id
     }

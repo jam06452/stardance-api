@@ -29,6 +29,13 @@ defmodule StardanceWeb.Router do
     get "/devlogs/:id", API.V1Controller, :devlogs
   end
 
+  scope "/api/v2", StardanceWeb do
+    pipe_through :api
+
+    get "/comments/devlog/:id", API.V2Controller, :devlog_comments
+    get "/comments/project/:id", API.V2Controller, :project_comments
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", StardanceWeb do
   #   pipe_through :api

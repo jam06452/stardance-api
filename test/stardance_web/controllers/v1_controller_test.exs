@@ -17,7 +17,7 @@ defmodule StardanceWeb.API.V1ControllerTest do
     ships: 7,
     votes: 42,
     slack_url: "https://slack.com/test",
-    last_scraped_at: ~U[2026-06-30 12:00:00Z]
+    last_scraped_at: ~U[2026-07-01 12:00:00Z]
   }
 
   @valid_project_attrs %{
@@ -32,7 +32,7 @@ defmodule StardanceWeb.API.V1ControllerTest do
     followers: 10,
     devlog_ids: [1, 2, 3],
     super_star: false,
-    last_scraped_at: ~U[2026-06-30 12:00:00Z]
+    last_scraped_at: ~U[2026-07-01 12:00:00Z]
   }
 
   @valid_devlog_attrs %{
@@ -42,7 +42,7 @@ defmodule StardanceWeb.API.V1ControllerTest do
     likes: 15,
     views: 200,
     duration_seconds: 3600,
-    last_scraped_at: ~U[2026-06-30 12:00:00Z]
+    last_scraped_at: ~U[2026-07-01 12:00:00Z]
   }
 
   describe "GET /api/v1/projects/:id" do
