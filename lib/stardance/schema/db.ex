@@ -235,7 +235,7 @@ defmodule Stardance.DB do
         Enum.each(comments, fn comment_data ->
           user_id =
             if comment_data.author_username not in [nil, ""] do
-              get_user_id(comment_data.author_username)
+              resolve_user_id(comment_data.author_username)
             end
 
           attrs =
@@ -310,6 +310,23 @@ defmodule Stardance.DB do
         case get_user(username) do
           {:ok, user} -> user.user_id
           {:error, _} -> nil
+        end
+
+      id ->
+        id
+    end
+  end
+
+  defp resolve_user_id(username) do
+    username = String.trim_leading(username, "@")
+
+    case Repo.one(from u in User, where: u.username == ^username, select: u.id) do
+      nil ->
+        with {:ok, data} <- Stardance.Utils.get_user(username) do
+          {:ok, saved} = upsert_record(User, put_timestamp(data))
+          saved.id
+        else
+          _ -> nil
         end
 
       id ->
