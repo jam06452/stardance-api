@@ -26,7 +26,7 @@ config :stardance, slack_oauth_token: env!("SLACK_OAUTH_TOKEN", :string)
 # script that automatically sets the env var above.
 
 config :amur,
-  base_url: "http://localhost:4000",
+  base_url: "https://stardance.jam06452.uk",
   providers: [
     hackclub: [
       client_id: env!("HACKCLUB_CLIENT_ID", :string!),
