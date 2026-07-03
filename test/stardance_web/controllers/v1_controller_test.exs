@@ -49,6 +49,75 @@ defmodule StardanceWeb.API.V1ControllerTest do
     last_scraped_at: @fresh_timestamp
   }
 
+  describe "GET /api/v1/projects" do
+    test "returns empty list when no projects exist", %{conn: conn} do
+      conn = get(conn, ~p"/api/v1/projects")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert body["projects"] == []
+      assert body["pagination"]["current_page"] == 1
+      assert body["pagination"]["total_count"] == 0
+    end
+
+    test "returns paginated list of projects", %{conn: conn} do
+      {:ok, user} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
+
+      project_attrs = Map.put(@valid_project_attrs, :user_id, user.id)
+      {:ok, _project} = %Project{} |> Project.changeset(project_attrs) |> Repo.insert()
+
+      conn = get(conn, ~p"/api/v1/projects")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["projects"]) == 1
+      assert body["pagination"]["total_count"] == 1
+      assert body["pagination"]["total_pages"] == 1
+    end
+
+    test "limits results based on limit param", %{conn: conn} do
+      {:ok, user} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
+
+      for i <- 1..3 do
+        attrs =
+          Map.merge(@valid_project_attrs, %{id: i, title: "Project #{i}", user_id: user.id})
+
+        {:ok, _} = %Project{} |> Project.changeset(attrs) |> Repo.insert()
+      end
+
+      conn = get(conn, ~p"/api/v1/projects?limit=2")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["projects"]) == 2
+    end
+
+    test "filters projects by query", %{conn: conn} do
+      {:ok, user} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
+
+      {:ok, _} =
+        %Project{}
+        |> Project.changeset(Map.put(@valid_project_attrs, :user_id, user.id))
+        |> Repo.insert()
+
+      {:ok, _} =
+        %Project{}
+        |> Project.changeset(%{
+          Map.put(@valid_project_attrs, :user_id, user.id)
+          | id: 201,
+            title: "Other Project"
+        })
+        |> Repo.insert()
+
+      conn = get(conn, ~p"/api/v1/projects?query=Other")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["projects"]) == 1
+      assert hd(body["projects"])["title"] == "Other Project"
+    end
+  end
+
   describe "GET /api/v1/projects/:id" do
     setup do
       {:ok, user} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
@@ -102,6 +171,46 @@ defmodule StardanceWeb.API.V1ControllerTest do
       assert conn.status == 404
       body = Jason.decode!(conn.resp_body)
       assert body["error"] == "Resource not found"
+    end
+  end
+
+  describe "GET /api/v1/users" do
+    test "returns empty list when no users exist", %{conn: conn} do
+      conn = get(conn, ~p"/api/v1/users")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert body["users"] == []
+      assert body["pagination"]["total_count"] == 0
+    end
+
+    test "returns paginated list of users", %{conn: conn} do
+      {:ok, _} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
+
+      conn = get(conn, ~p"/api/v1/users")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["users"]) == 1
+      assert body["pagination"]["total_count"] == 1
+    end
+
+    test "filters users by query", %{conn: conn} do
+      {:ok, _} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
+
+      {:ok, _} =
+        User.changeset(struct(User), %{
+          Map.put(@valid_user_attrs, :username, "otheruser")
+          | id: "a89e02d4-54fd-4126-bec7-ebfbb3c0f38a"
+        })
+        |> Repo.insert()
+
+      conn = get(conn, ~p"/api/v1/users?query=otheruser")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["users"]) == 1
+      assert hd(body["users"])["username"] == "otheruser"
     end
   end
 
@@ -160,6 +269,84 @@ defmodule StardanceWeb.API.V1ControllerTest do
       assert conn.status == 404
       body = Jason.decode!(conn.resp_body)
       assert body["error"] == "Resource not found"
+    end
+  end
+
+  describe "GET /api/v1/projects/:id/devlogs" do
+    setup do
+      {:ok, user} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
+
+      project_attrs = Map.put(@valid_project_attrs, :user_id, user.id)
+      {:ok, project} = %Project{} |> Project.changeset(project_attrs) |> Repo.insert()
+
+      for id <- [1, 2, 3] do
+        devlog_attrs =
+          @valid_devlog_attrs
+          |> Map.put(:id, id)
+          |> Map.put(:user_id, user.id)
+          |> Map.put(:project_id, project.id)
+
+        {:ok, _} = %Devlog{} |> Devlog.changeset(devlog_attrs) |> Repo.insert()
+      end
+
+      {:ok, user: user, project: project}
+    end
+
+    test "returns paginated devlogs for a project", %{
+      conn: conn,
+      project: project
+    } do
+      conn = get(conn, ~p"/api/v1/projects/#{project.id}/devlogs")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["devlogs"]) == 3
+      assert body["pagination"]["total_count"] == 3
+    end
+
+    test "limits results via limit param", %{conn: conn, project: project} do
+      conn = get(conn, ~p"/api/v1/projects/#{project.id}/devlogs?limit=2")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["devlogs"]) == 2
+    end
+
+    test "returns 404 when project does not exist", %{conn: conn} do
+      conn = get(conn, ~p"/api/v1/projects/99999/devlogs")
+
+      assert conn.status == 404
+      body = Jason.decode!(conn.resp_body)
+      assert body["error"] == "Resource not found"
+    end
+  end
+
+  describe "GET /api/v1/devlogs" do
+    setup do
+      {:ok, user} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
+
+      project_attrs = Map.put(@valid_project_attrs, :user_id, user.id)
+      {:ok, project} = %Project{} |> Project.changeset(project_attrs) |> Repo.insert()
+
+      devlog_attrs =
+        @valid_devlog_attrs
+        |> Map.put(:user_id, user.id)
+        |> Map.put(:project_id, project.id)
+
+      {:ok, _} = %Devlog{} |> Devlog.changeset(devlog_attrs) |> Repo.insert()
+
+      {:ok, user: user, project: project}
+    end
+
+    test "returns paginated list of all devlogs", %{
+      conn: conn
+    } do
+      conn = get(conn, ~p"/api/v1/devlogs")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["devlogs"]) == 1
+      assert body["pagination"]["total_count"] == 1
     end
   end
 

@@ -1,6 +1,10 @@
 defmodule StardanceWeb.API.V2Controller do
   use StardanceWeb, :controller
 
+  import StardanceWeb.API.Helpers, only: [send_error: 2, parse_pagination_params: 1]
+
+  # ── Comments ──────────────────────────────────────────────────────────
+
   def devlog_comments(conn, %{"id" => id}) do
     devlog_id = String.to_integer(id)
 
@@ -19,21 +23,15 @@ defmodule StardanceWeb.API.V2Controller do
     end
   end
 
-  defp send_error(conn, :not_found) do
-    conn
-    |> put_status(:not_found)
-    |> json(%{error: "Resource not found"})
-  end
+  # ── User projects (paginated) ─────────────────────────────────────────
 
-  defp send_error(conn, status) when is_integer(status) do
-    conn
-    |> put_status(status)
-    |> json(%{error: "Request failed with status #{status}"})
-  end
+  def user_projects(conn, params) do
+    username = params["username"]
+    opts = parse_pagination_params(params)
 
-  defp send_error(conn, reason) do
-    conn
-    |> put_status(:bad_request)
-    |> json(%{error: inspect(reason)})
+    case Stardance.DB.list_user_projects(username, opts) do
+      {:ok, data} -> json(conn, data)
+      {:error, reason} -> send_error(conn, reason)
+    end
   end
 end

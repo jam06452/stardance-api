@@ -110,6 +110,220 @@ defmodule Stardance.DB do
     {:error, "Unknown table or schema: #{inspect(unknown_table)}"}
   end
 
+  @default_per_page 20
+  @max_per_page 100
+
+  def list_projects(opts \\ []) do
+    page = Keyword.get(opts, :page, 1)
+    limit = min(Keyword.get(opts, :limit, @default_per_page), @max_per_page)
+    query = Keyword.get(opts, :query)
+
+    base =
+      from p in Project,
+        left_join: u in User,
+        on: p.user_id == u.id
+
+    base =
+      if query not in [nil, ""] do
+        pattern = "%#{query}%"
+
+        from [p, u] in base,
+          where: ilike(p.title, ^pattern) or ilike(p.description, ^pattern)
+      else
+        base
+      end
+
+    total_count =
+      from([p, _u] in base, select: count(p.id))
+      |> Repo.one()
+
+    total_pages = ceil(total_count / limit)
+
+    projects =
+      from([p, u] in base,
+        order_by: [desc: p.inserted_at],
+        offset: ^((page - 1) * limit),
+        limit: ^limit,
+        preload: [user: u]
+      )
+      |> Repo.all()
+      |> Enum.map(&normalize_project/1)
+
+    {:ok,
+     %{
+       projects: projects,
+       pagination: %{
+         current_page: page,
+         total_pages: total_pages,
+         total_count: total_count,
+         next_page: (page < total_pages && page + 1) || nil
+       }
+     }}
+  end
+
+  def list_devlogs(opts \\ []) do
+    page = Keyword.get(opts, :page, 1)
+    limit = min(Keyword.get(opts, :limit, @default_per_page), @max_per_page)
+
+    base = from(d in Devlog)
+
+    total_count =
+      from(d in base, select: count(d.id))
+      |> Repo.one()
+
+    total_pages = ceil(total_count / limit)
+
+    devlogs =
+      from(d in base,
+        order_by: [desc: d.inserted_at],
+        offset: ^((page - 1) * limit),
+        limit: ^limit
+      )
+      |> Repo.all()
+      |> Enum.map(&normalize_devlog/1)
+
+    {:ok,
+     %{
+       devlogs: devlogs,
+       pagination: %{
+         current_page: page,
+         total_pages: total_pages,
+         total_count: total_count,
+         next_page: (page < total_pages && page + 1) || nil
+       }
+     }}
+  end
+
+  def list_project_devlogs(project_id, opts \\ []) do
+    page = Keyword.get(opts, :page, 1)
+    limit = min(Keyword.get(opts, :limit, @default_per_page), @max_per_page)
+
+    case Repo.get(Project, project_id) do
+      nil ->
+        {:error, :not_found}
+
+      _project ->
+        base = from d in Devlog, where: d.project_id == ^project_id
+
+        total_count =
+          from(d in base, select: count(d.id))
+          |> Repo.one()
+
+        total_pages = ceil(total_count / limit)
+
+        devlogs =
+          from(d in base,
+            order_by: [desc: d.inserted_at],
+            offset: ^((page - 1) * limit),
+            limit: ^limit
+          )
+          |> Repo.all()
+          |> Enum.map(&normalize_devlog/1)
+
+        {:ok,
+         %{
+           devlogs: devlogs,
+           pagination: %{
+             current_page: page,
+             total_pages: total_pages,
+             total_count: total_count,
+             next_page: (page < total_pages && page + 1) || nil
+           }
+         }}
+    end
+  end
+
+  def list_users(opts \\ []) do
+    page = Keyword.get(opts, :page, 1)
+    limit = min(Keyword.get(opts, :limit, @default_per_page), @max_per_page)
+    query = Keyword.get(opts, :query)
+
+    base = from(u in User)
+
+    base =
+      if query not in [nil, ""] do
+        pattern = "%#{query}%"
+
+        from u in base,
+          where:
+            ilike(u.username, ^pattern) or
+              ilike(u.bio, ^pattern)
+      else
+        base
+      end
+
+    total_count =
+      from(u in base, select: count(u.id))
+      |> Repo.one()
+
+    total_pages = ceil(total_count / limit)
+
+    users =
+      from(u in base,
+        order_by: [desc: u.inserted_at],
+        offset: ^((page - 1) * limit),
+        limit: ^limit
+      )
+      |> Repo.all()
+      |> Enum.map(&normalize_user/1)
+
+    {:ok,
+     %{
+       users: users,
+       pagination: %{
+         current_page: page,
+         total_pages: total_pages,
+         total_count: total_count,
+         next_page: (page < total_pages && page + 1) || nil
+       }
+     }}
+  end
+
+  def list_user_projects(username, opts \\ []) do
+    username = String.trim_leading(username, "@")
+    page = Keyword.get(opts, :page, 1)
+    limit = min(Keyword.get(opts, :limit, @default_per_page), @max_per_page)
+
+    case Repo.get_by(User, username: username) do
+      nil ->
+        {:error, :not_found}
+
+      user ->
+        base =
+          from p in Project,
+            left_join: u in User,
+            on: p.user_id == u.id,
+            where: p.user_id == ^user.id
+
+        total_count =
+          from([p, _u] in base, select: count(p.id))
+          |> Repo.one()
+
+        total_pages = ceil(total_count / limit)
+
+        projects =
+          from([p, u] in base,
+            order_by: [desc: p.inserted_at],
+            offset: ^((page - 1) * limit),
+            limit: ^limit,
+            preload: [user: u]
+          )
+          |> Repo.all()
+          |> Enum.map(&normalize_project/1)
+
+        {:ok,
+         %{
+           projects: projects,
+           pagination: %{
+             current_page: page,
+             total_pages: total_pages,
+             total_count: total_count,
+             next_page: (page < total_pages && page + 1) || nil
+           }
+         }}
+    end
+  end
+
   def get_devlog_comments(devlog_id) do
     query =
       from c in Comment,
@@ -374,18 +588,23 @@ defmodule Stardance.DB do
 
   defp normalize_user(data) do
     %{
+      id: data.id,
       user_id: data.id,
       username: data.username,
-      devlog_count: length(data.devlog_ids || []),
+      display_name: data.username,
+      avatar: data.user_pfp,
       banner_url: data.banner_url,
       user_pfp: data.user_pfp,
       bio: data.bio || "Add a bio to tell folks who you are.",
+      devlog_count: length(data.devlog_ids || []),
       project_count: length(data.project_ids || []),
       project_ids: data.project_ids || [],
       devlog_ids: data.devlog_ids || [],
       ships: data.ships || 0,
       votes: data.votes || 0,
-      slack_url: data.slack_url
+      slack_url: data.slack_url,
+      created_at: data.inserted_at,
+      updated_at: data.updated_at
     }
   end
 
@@ -404,8 +623,8 @@ defmodule Stardance.DB do
 
     %{
       id: project.id,
-      description: project.description || "",
       title: project.title,
+      description: project.description || "",
       username: if(Ecto.assoc_loaded?(project.user), do: project.user.username, else: nil),
       banner_url: project.banner_url,
       devlog_count: project.devlog_count || 0,
@@ -414,7 +633,9 @@ defmodule Stardance.DB do
       followers: project.followers || 0,
       demo_url: project.demo_url,
       sourcecode: project.source_code,
-      superstar: project.super_star || false
+      superstar: project.super_star || false,
+      created_at: project.inserted_at,
+      updated_at: project.updated_at
     }
   end
 
@@ -423,12 +644,18 @@ defmodule Stardance.DB do
       id: devlog.id,
       description: devlog.description || "",
       image_urls: devlog.image_urls || [],
+      media:
+        Enum.map(devlog.image_urls || [], fn url ->
+          %{url: url, content_type: "image/png"}
+        end),
       likes: devlog.likes || 0,
       views: devlog.views || 0,
       duration_seconds: devlog.duration_seconds || 0,
       comments_count: devlog.comments_count || 0,
       project_id: devlog.project_id,
-      user_id: devlog.user_id
+      user_id: devlog.user_id,
+      created_at: devlog.inserted_at,
+      updated_at: devlog.updated_at
     }
   end
 end

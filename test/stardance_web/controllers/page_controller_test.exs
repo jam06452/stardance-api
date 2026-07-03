@@ -5,6 +5,6 @@ defmodule StardanceWeb.PageControllerTest do
     conn = get(conn, ~p"/")
     html = html_response(conn, 200)
     assert html =~ "api-reference"
-    assert html =~ "/openapi.json"
+    assert html =~ "api-reference.js"
   end
 end

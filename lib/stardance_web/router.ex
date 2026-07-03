@@ -23,10 +23,16 @@ defmodule StardanceWeb.Router do
   scope "/api/v1", StardanceWeb do
     pipe_through :api
 
+    get "/projects", API.V1Controller, :index
     get "/projects/:id", API.V1Controller, :projects
+    get "/projects/:id/devlogs", API.V1Controller, :project_devlogs
     get "/projects/:id/devlogs/:devlog_id", API.V1Controller, :project_devlog
-    get "/users/:username", API.V1Controller, :users
+
+    get "/devlogs", API.V1Controller, :devlogs_index
     get "/devlogs/:id", API.V1Controller, :devlogs
+
+    get "/users", API.V1Controller, :list_users
+    get "/users/:username", API.V1Controller, :users
   end
 
   scope "/api/v2", StardanceWeb do
@@ -34,20 +40,12 @@ defmodule StardanceWeb.Router do
 
     get "/comments/devlog/:id", API.V2Controller, :devlog_comments
     get "/comments/project/:id", API.V2Controller, :project_comments
-  end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", StardanceWeb do
-  #   pipe_through :api
-  # end
+    get "/users/:username/projects", API.V2Controller, :user_projects
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:stardance, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
