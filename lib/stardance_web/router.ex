@@ -14,10 +14,26 @@ defmodule StardanceWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :authenticate do
+    plug StardanceWeb.Plugs.Authenticate
+  end
+
+  scope "/auth", alias: false do
+    pipe_through :browser
+    forward "/", Amur.Router
+  end
+
   scope "/", StardanceWeb do
     pipe_through :browser
 
     get "/", PageController, :docs
+    get "/signin", PageController, :signin
+  end
+
+  scope "/", StardanceWeb do
+    pipe_through [:browser, :authenticate]
+
+    get "/dash", PageController, :dash
   end
 
   scope "/api/v1", StardanceWeb do

@@ -23,6 +23,18 @@ config :stardance, :stardance_cookie, env!("STARDANCE_COOKIE", :string!)
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
+
+config :amur,
+  base_url: "http://localhost:4000",
+  providers: [
+    hackclub: [
+      client_id: env!("HACKCLUB_CLIENT_ID", :string!),
+      client_secret: env!("HACKCLUB_CLIENT_SECRET", :string!)
+    ]
+  ],
+  on_success: &Stardance.AuthController.on_success/2,
+  on_failure: &Stardance.AuthController.on_failure/2
+
 if System.get_env("PHX_SERVER") do
   config :stardance, StardanceWeb.Endpoint, server: true
 end

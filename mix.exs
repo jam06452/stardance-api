@@ -67,7 +67,8 @@ defmodule Stardance.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:floki, "~> 0.38.4"},
-      {:dotenvy, "~> 1.1.1"}
+      {:dotenvy, "~> 1.1.1"},
+      {:amur, "~> 0.1.1"}
     ]
   end
 
