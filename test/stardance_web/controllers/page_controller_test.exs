@@ -4,7 +4,7 @@ defmodule StardanceWeb.PageControllerTest do
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
     html = html_response(conn, 200)
-    assert html =~ "api-reference"
-    assert html =~ "api-reference.js"
+    assert html =~ "Stardance"
+    assert html =~ "Developer API"
   end
 end

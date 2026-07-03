@@ -1,30 +1,47 @@
 defmodule Stardance.AuthController do
   import Plug.Conn
-  import Phoenix.Controller, only: [redirect: 2]
+  import Phoenix.Controller
 
   alias Stardance.Repo
   alias Stardance.Schema.AuthUser
 
   def on_success(conn, user) do
-    attrs = %{
-      uid: user.uid,
-      email: user.email,
-      name: user.name,
-      slack_id: user.slack_id,
-      provider: user.provider
-    }
+    slack_id = user.slack_id
 
-    {:ok, auth_user} =
+    cachet_attrs =
+      if slack_id not in [nil, ""] do
+        case fetch_cachet_info(slack_id) do
+          {:ok, %{image_url: image_url}} ->
+            %{avatar: Stardance.Utils.shorten(image_url)}
+
+          _ ->
+            %{}
+        end
+      else
+        %{}
+      end
+
+    attrs =
+      %{
+        uid: user.uid,
+        email: user.email,
+        name: user.name,
+        slack_id: slack_id,
+        provider: user.provider
+      }
+      |> Map.merge(cachet_attrs)
+
+    auth_user =
       case Repo.get_by(AuthUser, uid: user.uid) do
         nil ->
           %AuthUser{}
           |> AuthUser.changeset(attrs)
-          |> Repo.insert()
+          |> Repo.insert!()
 
         existing ->
           existing
           |> AuthUser.changeset(attrs)
-          |> Repo.update()
+          |> Repo.update!()
       end
 
     conn
@@ -35,9 +52,14 @@ defmodule Stardance.AuthController do
   end
 
   def on_failure(conn, reason) do
-    IO.inspect(reason, label: "Auth failure")
+    require Logger
+    Logger.warning("Auth failure: #{inspect(reason)}")
 
     conn
     |> redirect(to: "/")
+  end
+
+  defp fetch_cachet_info(slack_id) do
+    Stardance.Utils.fetch_cachet_user(slack_id)
   end
 end

@@ -7,4 +7,28 @@ defmodule StardanceWeb.PageHTML do
   use StardanceWeb, :html
 
   embed_templates "page_html/*"
+
+  attr :user, :map, default: nil
+
+  def profile_picture(assigns) do
+    ~H"""
+    <%= if @user && @user.avatar do %>
+      <img
+        src={@user.avatar}
+        class="h-full w-full object-cover"
+        alt={profile_picture_alt(@user)}
+        draggable="false"
+      />
+    <% else %>
+      <div class="h-full w-full bg-gray-300 flex items-center justify-center">
+        <span class="text-gray-500 text-4xl">?</span>
+      </div>
+    <% end %>
+    """
+  end
+
+  defp profile_picture_alt(user), do: "#{user.name || "User"}'s profile picture"
+
+  def display_name(nil), do: "Unknown"
+  def display_name(user), do: user.name || "Unknown"
 end

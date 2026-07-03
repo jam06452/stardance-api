@@ -23,6 +23,23 @@ defmodule Stardance.Utils do
     end
   end
 
+  def fetch_cachet_user(slack_id) do
+    case Req.get("https://cachet.dunkirk.sh/users/#{slack_id}/r", redirect: false) do
+      {:ok, %{status: status} = response} when status in 301..308 ->
+        # Extract the redirect URL from the location header
+        case Req.Response.get_header(response, "location") do
+          [image_url | _] -> {:ok, %{image_url: image_url}}
+          [] -> {:error, :missing_location_header}
+        end
+
+      {:ok, %{status: status}} ->
+        {:error, status}
+
+      {:error, exception} ->
+        {:error, exception}
+    end
+  end
+
   def shorten(nil), do: nil
 
   def shorten(url) do
