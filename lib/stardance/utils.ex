@@ -40,6 +40,21 @@ defmodule Stardance.Utils do
     end
   end
 
+  def fetch_hackatime_display_name(slack_id) do
+    url = "https://hackatime.hackclub.com/api/v1/users/#{slack_id}/stats"
+
+    case Req.get(url) do
+      {:ok, %{status: 200, body: %{"data" => %{"username" => username}}}} ->
+        {:ok, username}
+
+      {:ok, %{status: status}} ->
+        {:error, status}
+
+      {:error, exception} ->
+        {:error, exception}
+    end
+  end
+
   def shorten(nil), do: nil
 
   def shorten(url) do

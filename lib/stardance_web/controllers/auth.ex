@@ -8,6 +8,16 @@ defmodule Stardance.AuthController do
   def on_success(conn, user) do
     slack_id = user.slack_id
 
+    hackatime_attrs =
+      if slack_id not in [nil, ""] do
+        case fetch_hackatime_name(slack_id) do
+          {:ok, username} -> %{display_name: username}
+          _ -> %{}
+        end
+      else
+        %{}
+      end
+
     cachet_attrs =
       if slack_id not in [nil, ""] do
         case fetch_cachet_info(slack_id) do
@@ -30,6 +40,7 @@ defmodule Stardance.AuthController do
         provider: user.provider
       }
       |> Map.merge(cachet_attrs)
+      |> Map.merge(hackatime_attrs)
 
     auth_user =
       case Repo.get_by(AuthUser, uid: user.uid) do
@@ -61,5 +72,9 @@ defmodule Stardance.AuthController do
 
   defp fetch_cachet_info(slack_id) do
     Stardance.Utils.fetch_cachet_user(slack_id)
+  end
+
+  defp fetch_hackatime_name(slack_id) do
+    Stardance.Utils.fetch_hackatime_display_name(slack_id)
   end
 end

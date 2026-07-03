@@ -12,13 +12,14 @@ defmodule Stardance.Schema.AuthUser do
     field :provider, :string
     field :endorsed, :boolean, default: false
     field :avatar, :string
+    field :display_name, :string
 
     timestamps()
   end
 
   def changeset(auth_user, attrs) do
     auth_user
-    |> cast(attrs, [:uid, :email, :name, :slack_id, :provider, :endorsed, :avatar])
+    |> cast(attrs, [:uid, :email, :name, :slack_id, :provider, :endorsed, :avatar, :display_name])
     |> validate_required([:uid, :provider])
     |> unique_constraint(:uid)
   end
