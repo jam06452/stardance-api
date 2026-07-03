@@ -13,7 +13,7 @@ defmodule Stardance.Application do
       {DNSCluster, query: Application.get_env(:stardance, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Stardance.PubSub},
       {Task.Supervisor, name: Stardance.ScrapeSupervisor},
-      Stardance.HackatimeBackfill,
+      Stardance.SlackBackfill,
       StardanceWeb.Endpoint
     ]
 

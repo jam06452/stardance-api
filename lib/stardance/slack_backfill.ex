@@ -1,4 +1,4 @@
-defmodule Stardance.HackatimeBackfill do
+defmodule Stardance.SlackBackfill do
   @moduledoc """
   One-shot task that runs on startup to backfill `display_name` on
   `auth_users` records that are missing one. For each such record with a
@@ -6,8 +6,8 @@ defmodule Stardance.HackatimeBackfill do
   Records without a `slack_id` or whose hackatime lookup fails are skipped.
   """
   use Task, restart: :transient
-
   import Ecto.Query
+  require Logger
 
   alias Stardance.Repo
   alias Stardance.Schema.AuthUser
@@ -25,11 +25,17 @@ defmodule Stardance.HackatimeBackfill do
       )
 
     for user <- users do
-      case Utils.fetch_hackatime_display_name(user.slack_id) do
+      # Add a brief delay to prevent instantly hammering the Slack API
+      Process.sleep(250)
+
+      case Utils.fetch_slack_display_name(user.slack_id) do
         {:ok, username} when is_binary(username) and username != "" ->
           user
           |> AuthUser.changeset(%{display_name: username})
-          |> Repo.update()
+          |> update_user()
+
+        {:error, reason} ->
+          Logger.warning("Slack lookup failed for slack_id #{user.slack_id}: #{inspect(reason)}")
 
         _ ->
           :skip
@@ -37,5 +43,17 @@ defmodule Stardance.HackatimeBackfill do
     end
 
     :ok
+  end
+
+  defp update_user(changeset) do
+    case Repo.update(changeset) do
+      {:ok, _struct} ->
+        :ok
+
+      {:error, failed_changeset} ->
+        Logger.error(
+          "DB update failed for user #{failed_changeset.data.id}: #{inspect(failed_changeset.errors)}"
+        )
+    end
   end
 end

@@ -11,7 +11,7 @@ defmodule StardanceWeb.PageController do
       Repo.all(
         from a in AuthUser,
           where: a.endorsed == true,
-          select: %{name: a.name, avatar: a.avatar}
+          select: %{display_name: a.display_name, avatar: a.avatar}
       )
 
     render(conn, :lander, endorsed_users: endorsed_users)

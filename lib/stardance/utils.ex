@@ -40,12 +40,19 @@ defmodule Stardance.Utils do
     end
   end
 
-  def fetch_hackatime_display_name(slack_id) do
-    url = "https://hackatime.hackclub.com/api/v1/users/#{slack_id}/stats"
+  def fetch_slack_display_name(slack_id) do
+    token = Application.fetch_env!(:stardance, :slack_oauth_token)
+    url = "https://slack.com/api/users.info"
 
-    case Req.get(url) do
-      {:ok, %{status: 200, body: %{"data" => %{"username" => username}}}} ->
-        {:ok, username}
+    case Req.get(url, headers: [{"authorization", "Bearer #{token}"}], params: [user: slack_id]) do
+      {:ok, %{status: 200, body: %{"ok" => true, "user" => %{"profile" => profile}}}} ->
+        case Map.get(profile, "display_name") do
+          "" -> {:ok, Map.get(profile, "real_name")}
+          name -> {:ok, name}
+        end
+
+      {:ok, %{status: 200, body: %{"ok" => false, "error" => error}}} ->
+        {:error, "Slack API error: #{error}"}
 
       {:ok, %{status: status}} ->
         {:error, status}

@@ -10,7 +10,7 @@ defmodule Stardance.AuthController do
 
     hackatime_attrs =
       if slack_id not in [nil, ""] do
-        case fetch_hackatime_name(slack_id) do
+        case fetch_slack_name(slack_id) do
           {:ok, username} -> %{display_name: username}
           _ -> %{}
         end
@@ -74,7 +74,7 @@ defmodule Stardance.AuthController do
     Stardance.Utils.fetch_cachet_user(slack_id)
   end
 
-  defp fetch_hackatime_name(slack_id) do
-    Stardance.Utils.fetch_hackatime_display_name(slack_id)
+  defp fetch_slack_name(slack_id) do
+    Stardance.Utils.fetch_slack_display_name(slack_id)
   end
 end

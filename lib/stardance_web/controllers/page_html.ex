@@ -27,8 +27,8 @@ defmodule StardanceWeb.PageHTML do
     """
   end
 
-  defp profile_picture_alt(user), do: "#{user.name || "User"}'s profile picture"
+  defp profile_picture_alt(user), do: "#{user.display_name || "User"}'s profile picture"
 
   def display_name(nil), do: "Unknown"
-  def display_name(user), do: user.name || "Unknown"
+  def display_name(user), do: user.display_name || "Unknown"
 end
