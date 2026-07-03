@@ -72,7 +72,7 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host = env!("PHX_HOST", :string) || "stardance.jam06452.uk"
 
   config :stardance, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
