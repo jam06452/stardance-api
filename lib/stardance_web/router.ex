@@ -34,7 +34,7 @@ defmodule StardanceWeb.Router do
   scope "/", StardanceWeb do
     pipe_through [:browser, :authenticate]
 
-    get "/dash", PageController, :dash
+    live "/dash", DashboardLive, :index
   end
 
   scope "/api/v1", StardanceWeb do
