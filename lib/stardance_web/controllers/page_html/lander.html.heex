@@ -93,8 +93,8 @@
                   <.profile_picture user={user} />
                 </div>
 
-                <div class="w-full rounded-full bg-base-100 py-2 text-center text-lg font-medium text-black shadow">
-                  {display_name(user)}
+                <div class="w-full overflow-hidden rounded-full bg-base-100 py-2 px-3 text-center text-lg font-medium text-black shadow">
+                  <span class="block truncate">{display_name(user)}</span>
                 </div>
               </div>
             <% end %>

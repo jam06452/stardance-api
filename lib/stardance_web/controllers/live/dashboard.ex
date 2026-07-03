@@ -130,7 +130,7 @@ defmodule StardanceWeb.DashboardLive do
                         </div>
                       </figure>
 
-                      <div class="card-body p-3 pt-0 items-center">
+                      <div class="card-body p-3 pt-0 items-center w-full">
                         <p class="font-semibold text-center truncate w-full">
                           {user.display_name || user.name || user.email || "Unknown"}
                         </p>
