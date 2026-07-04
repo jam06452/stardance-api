@@ -10,6 +10,7 @@ defmodule Stardance.Schema.Devlog do
     field :views, :integer, default: 0
     field :duration_seconds, :integer, default: 0
     field :comments_count, :integer, default: 0
+    field :score, :float, default: 0.0
     field :last_scraped_at, :utc_datetime
 
     belongs_to :user, Stardance.Schema.User, type: :binary_id
@@ -31,6 +32,7 @@ defmodule Stardance.Schema.Devlog do
       :comments_count,
       :user_id,
       :project_id,
+      :score,
       :last_scraped_at
     ])
     |> validate_required([:id, :description, :user_id, :project_id])

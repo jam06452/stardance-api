@@ -471,6 +471,14 @@ defmodule Stardance.DB do
             devlog
             |> Devlog.changeset(%{comments_count: length(comments)})
             |> Repo.update()
+            |> case do
+              {:ok, updated_devlog} ->
+                Stardance.Rankings.update_devlog_score(updated_devlog)
+                :ok
+
+              error ->
+                error
+            end
         end
 
       _ ->
@@ -548,6 +556,37 @@ defmodule Stardance.DB do
     end
   end
 
+  defp upsert_record(Devlog, attrs) do
+    attrs = Stardance.Rankings.score_devlog_attrs(attrs)
+
+    result =
+      struct(Devlog)
+      |> Devlog.changeset(attrs)
+      |> Repo.insert(
+        on_conflict: :replace_all,
+        conflict_target: :id,
+        returning: true
+      )
+
+    with {:ok, devlog} <- result do
+      Stardance.Rankings.update_project_score(devlog.project_id)
+    end
+
+    result
+  end
+
+  defp upsert_record(Project, attrs) do
+    attrs = Stardance.Rankings.score_project_attrs(attrs)
+
+    struct(Project)
+    |> Project.changeset(attrs)
+    |> Repo.insert(
+      on_conflict: :replace_all,
+      conflict_target: :id,
+      returning: true
+    )
+  end
+
   defp upsert_record(User, attrs) do
     struct(User)
     |> User.changeset(attrs)
@@ -563,17 +602,6 @@ defmodule Stardance.DB do
     |> Comment.changeset(attrs)
     |> Repo.insert(
       on_conflict: :nothing,
-      returning: true
-    )
-  end
-
-  defp upsert_record(schema_module, attrs) do
-    schema_module
-    |> struct()
-    |> schema_module.changeset(attrs)
-    |> Repo.insert(
-      on_conflict: :replace_all,
-      conflict_target: :id,
       returning: true
     )
   end

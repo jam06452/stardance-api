@@ -14,6 +14,7 @@ defmodule Stardance.Schema.Project do
     field :followers, :integer, default: 0
     field :devlog_ids, {:array, :integer}, default: []
     field :super_star, :boolean, default: false
+    field :score, :float, default: 0.0
     field :last_scraped_at, :utc_datetime
 
     belongs_to :user, Stardance.Schema.User, type: :binary_id
@@ -36,6 +37,7 @@ defmodule Stardance.Schema.Project do
       :followers,
       :devlog_ids,
       :super_star,
+      :score,
       :user_id,
       :last_scraped_at
     ])

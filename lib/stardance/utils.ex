@@ -128,7 +128,7 @@ defmodule Stardance.Utils do
 
     superstar =
       document
-      |> Floki.find("[class*='superstar' i], [alt*='superstar' i]")
+      |> Floki.find(".project-show__badge--fire")
       |> Enum.any?()
 
     devlog_ids =
@@ -149,10 +149,10 @@ defmodule Stardance.Utils do
       total_hours: Map.get(stats, "total hours", "0") |> parse_float(),
       banner_url: banner_url,
       demo_url: demo_url,
-      sourcecode: sourcecode,
+      source_code: sourcecode,
       followers: followers,
       devlog_ids: devlog_ids,
-      superstar: superstar
+      super_star: superstar
     }
   end
 
