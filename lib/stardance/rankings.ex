@@ -1,5 +1,5 @@
 defmodule Stardance.Rankings do
-import Ecto.Query
+  import Ecto.Query
   alias Stardance.Repo
   alias Stardance.Schema.{Devlog, Project}
 
@@ -14,6 +14,7 @@ import Ecto.Query
   @demo_weight 1.1
   @source_weight 1.1
   @superstar_weight 1.3
+  @follower_weight 1.5
 
   def devlog_score(likes, comments, views, word_count) do
     @like_weight * likes +
@@ -31,15 +32,17 @@ import Ecto.Query
     devlog_score(likes, comments, views, word_count)
   end
 
-  def project_score(total_hours, devlog_scores, has_demo?, has_source?, superstar?) do
+  def project_score(total_hours, devlog_scores, has_demo?, has_source?, superstar?, followers) do
     demo_weight = if has_demo?, do: @demo_weight, else: 1.0
     source_weight = if has_source?, do: @source_weight, else: 1.0
     superstar_weight = if superstar?, do: @superstar_weight, else: 1.0
+    follower_multiplier = @follower_weight * :math.log10(followers + 1)
 
     devlogs_sum = Enum.sum(devlog_scores)
     hours_component = @hour_weight * :math.log2(total_hours + 1)
 
-    (hours_component + devlogs_sum) * demo_weight * source_weight * superstar_weight
+    (hours_component + devlogs_sum) * demo_weight * source_weight * superstar_weight *
+      follower_multiplier
   end
 
   def project_score(%Project{} = project) do
@@ -47,6 +50,7 @@ import Ecto.Query
     has_demo? = not is_nil(project.demo_url) and project.demo_url != ""
     has_source? = not is_nil(project.source_code) and project.source_code != ""
     superstar? = project.super_star || false
+    followers = project.followers || 0
 
     devlog_scores =
       if Ecto.assoc_loaded?(project.devlogs) do
@@ -56,7 +60,7 @@ import Ecto.Query
         |> Enum.map(&(&1 || 0.0))
       end
 
-    project_score(total_hours, devlog_scores, has_demo?, has_source?, superstar?)
+    project_score(total_hours, devlog_scores, has_demo?, has_source?, superstar?, followers)
   end
 
   def update_devlog_score(%Devlog{} = devlog) do
@@ -112,7 +116,11 @@ import Ecto.Query
         []
       end
 
-    score = project_score(total_hours, devlog_scores, has_demo?, has_source?, superstar?)
+    followers = get_attr(attrs, :followers, 0)
+
+    score =
+      project_score(total_hours, devlog_scores, has_demo?, has_source?, superstar?, followers)
+
     Map.put(attrs, :score, score)
   end
 
