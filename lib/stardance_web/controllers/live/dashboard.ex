@@ -24,13 +24,10 @@ defmodule StardanceWeb.DashboardLive do
           }
       )
 
-    display_users = marquee_users(endorsed_users)
-
     {:ok,
      socket
      |> assign(:current_user, user)
      |> assign(:endorsed_users, endorsed_users)
-     |> assign(:display_users, display_users)
      |> assign(:endorsed_count, length(endorsed_users))}
   end
 
@@ -58,7 +55,6 @@ defmodule StardanceWeb.DashboardLive do
          socket
          |> assign(:current_user, updated_user)
          |> assign(:endorsed_users, endorsed_users)
-         |> assign(:display_users, marquee_users(endorsed_users))
          |> assign(:endorsed_count, length(endorsed_users))
          |> put_flash(
            :info,
@@ -68,13 +64,6 @@ defmodule StardanceWeb.DashboardLive do
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, "Failed to update endorsement.")}
     end
-  end
-
-  defp marquee_users([]), do: []
-
-  defp marquee_users(users) do
-    min_visible = max(10, length(users))
-    users |> Stream.cycle() |> Enum.take(min_visible)
   end
 
   def render(assigns) do
@@ -160,11 +149,11 @@ defmodule StardanceWeb.DashboardLive do
             </div>
 
             <div
-              :if={@display_users != []}
+              :if={@endorsed_users != []}
               class="flex w-max gap-5 animate-[carousel_40s_linear_infinite]"
             >
               <%= for _ <- 1..2 do %>
-                <%= for user <- @display_users do %>
+                <%= for user <- @endorsed_users do %>
                   <div class="flex w-32 shrink-0 flex-col items-center gap-3">
                     <div class="h-32 w-32 overflow-hidden rounded-[2rem] bg-white/10 shadow-xl backdrop-blur-sm">
                       <StardanceWeb.PageHTML.profile_picture user={user} />
