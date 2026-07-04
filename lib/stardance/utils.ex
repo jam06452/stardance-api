@@ -110,15 +110,17 @@ defmodule Stardance.Utils do
     panel_links = Floki.find(document, ".project-show__panel-actions a")
 
     demo_url =
-      panel_links
-      |> Enum.find(fn node -> Floki.text(node) =~ ~r/Demo|Website/i end)
+      (panel_links ++ Floki.find(document, ".project-show__latest-ship-cta a"))
+      |> Enum.find(fn node -> Floki.text(node) =~ ~r/Demo|Website|Try project/i end)
       |> extract_first_href()
       |> shorten()
 
     sourcecode =
-      panel_links
+      (panel_links ++
+         Floki.find(document, ".project-show__latest-ship-cta a") ++
+         Floki.find(document, ".project-show__pill--github"))
       |> Enum.find(fn node ->
-        Floki.text(node) =~ ~r/Source|Code/i or
+        Floki.text(node) =~ ~r/Source|Code|See source/i or
           extract_first_href(node) =~ ~r/github\.com/
       end)
       |> extract_first_href()
