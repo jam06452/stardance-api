@@ -71,6 +71,22 @@ defmodule Stardance.Utils do
     "https://url.jam06452.uk/" <> encoded
   end
 
+  def readme_url_from_repo(nil), do: nil
+
+  def readme_url_from_repo("") do
+    nil
+  end
+
+  def readme_url_from_repo(url) do
+    case Regex.run(~r{^(?:https?://)?(?:www\.)?github\.com/([^/]+)/([^/]+)/?.*}, url) do
+      [_, owner, repo] ->
+        "https://raw.githubusercontent.com/#{owner}/#{repo}/refs/heads/main/README.md"
+
+      _ ->
+        nil
+    end
+  end
+
   defp fetch_document(path) do
     cookie = Application.fetch_env!(:stardance, :stardance_cookie)
 
@@ -140,6 +156,24 @@ defmodule Stardance.Utils do
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
 
+    ai_declaration =
+      case Floki.find(document, ".project-show__ai-declaration") do
+        [] -> nil
+        nodes -> nodes |> Floki.text() |> String.trim()
+      end
+
+    ship_status =
+      document
+      |> Floki.find(".project-show__ship-status")
+      |> Floki.text()
+      |> String.trim()
+      |> case do
+        "" -> nil
+        val -> val
+      end
+
+    readme_url = sourcecode |> readme_url_from_repo() |> shorten()
+
     %{
       id: id,
       title: title,
@@ -150,6 +184,10 @@ defmodule Stardance.Utils do
       banner_url: banner_url,
       demo_url: demo_url,
       source_code: sourcecode,
+      repo_url: sourcecode,
+      readme_url: readme_url,
+      ai_declaration: ai_declaration,
+      ship_status: ship_status,
       followers: followers,
       devlog_ids: devlog_ids,
       super_star: superstar
@@ -177,6 +215,47 @@ defmodule Stardance.Utils do
     project_ids = extract_feed_ids(feed_cards, "data-feed-engagement-project-id-value")
     devlog_ids = extract_feed_ids(feed_cards, "data-feed-engagement-post-id-value")
 
+    achievements =
+      document
+      |> Floki.find(".achievements-widget__icon")
+      |> Enum.map(fn node ->
+        name =
+          case Floki.attribute(node, "data-tooltip-message-value") do
+            [name | _] ->
+              name
+
+            [] ->
+              node |> Floki.find("img") |> Floki.attribute("alt") |> List.first() || "Unknown"
+          end
+
+        icon_url = node |> Floki.find("img") |> Floki.attribute("src") |> List.first()
+
+        slug =
+          case icon_url do
+            nil -> nil
+            url -> url |> String.split("/") |> List.last() |> String.split("-") |> List.first()
+          end
+
+        %{
+          slug: slug,
+          name: name,
+          description: nil
+        }
+      end)
+      |> Enum.reject(fn a -> is_nil(a.slug) end)
+
+    slack_id =
+      case slack_url do
+        nil ->
+          nil
+
+        url ->
+          case Regex.run(~r{slack\.com/team/([A-Za-z0-9]+)}, url) do
+            [_, id] -> id
+            _ -> nil
+          end
+      end
+
     %{
       username: final_username,
       user_pfp: user_pfp,
@@ -188,7 +267,9 @@ defmodule Stardance.Utils do
       devlog_ids: devlog_ids,
       ships: Map.get(stats, "ships", 0),
       votes: Map.get(stats, "votes", 0),
-      slack_url: slack_url
+      slack_url: slack_url,
+      slack_id: slack_id,
+      achievements: achievements
     }
   end
 

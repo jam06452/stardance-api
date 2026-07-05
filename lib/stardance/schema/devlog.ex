@@ -10,6 +10,7 @@ defmodule Stardance.Schema.Devlog do
     field :views, :integer, default: 0
     field :duration_seconds, :integer, default: 0
     field :comments_count, :integer, default: 0
+    field :scrapbook_url, :string
     field :score, :float, default: 0.0
     field :last_scraped_at, :utc_datetime
 
@@ -30,6 +31,7 @@ defmodule Stardance.Schema.Devlog do
       :views,
       :duration_seconds,
       :comments_count,
+      :scrapbook_url,
       :user_id,
       :project_id,
       :score,

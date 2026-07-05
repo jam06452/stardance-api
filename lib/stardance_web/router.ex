@@ -50,15 +50,26 @@ defmodule StardanceWeb.Router do
 
     get "/users", API.V1Controller, :list_users
     get "/users/:username", API.V1Controller, :users
+    get "/users/:username/projects", API.V1Controller, :user_projects
   end
 
   scope "/api/v2", StardanceWeb do
     pipe_through :api
 
+    get "/projects", API.V2Controller, :index
+    get "/projects/:id", API.V2Controller, :projects
+    get "/projects/:id/devlogs", API.V2Controller, :project_devlogs
+    get "/projects/:id/devlogs/:devlog_id", API.V2Controller, :project_devlog
+
+    get "/devlogs", API.V2Controller, :devlogs_index
+    get "/devlogs/:id", API.V2Controller, :devlogs
+
+    get "/users", API.V2Controller, :list_users
+    get "/users/:username", API.V2Controller, :users
+    get "/users/:username/projects", API.V2Controller, :user_projects
+
     get "/comments/devlog/:id", API.V2Controller, :devlog_comments
     get "/comments/project/:id", API.V2Controller, :project_comments
-
-    get "/users/:username/projects", API.V2Controller, :user_projects
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

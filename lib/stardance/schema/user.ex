@@ -15,11 +15,16 @@ defmodule Stardance.Schema.User do
     field :devlog_ids, {:array, :integer}, default: []
     field :ships, :integer, default: 0
     field :votes, :integer, default: 0
+    field :slack_id, :string
+    field :stardust, :integer
+    field :like_count, :integer, default: 0
+    field :vote_count, :integer, default: 0
     field :slack_url, :string
     field :last_scraped_at, :utc_datetime
 
     has_many :projects, Stardance.Schema.Project
     has_many :devlogs, Stardance.Schema.Devlog
+    has_many :achievements, Stardance.Schema.Achievement
 
     timestamps()
   end
@@ -38,6 +43,10 @@ defmodule Stardance.Schema.User do
       :devlog_ids,
       :ships,
       :votes,
+      :slack_id,
+      :stardust,
+      :like_count,
+      :vote_count,
       :slack_url,
       :last_scraped_at
     ])

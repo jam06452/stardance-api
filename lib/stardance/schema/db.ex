@@ -2,7 +2,7 @@ defmodule Stardance.DB do
   import Ecto.Query
   require Logger
 
-  alias Stardance.Schema.{User, Project, Devlog, Comment}
+  alias Stardance.Schema.{User, Project, Devlog, Comment, Achievement}
   alias Stardance.Repo
 
   @stale_hours 12
@@ -17,32 +17,37 @@ defmodule Stardance.DB do
 
   # Public API
 
-  def get_user(username) do
+  def get_user(username, opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
     username = String.trim_leading(username, "@")
 
     case Repo.get_by(User, username: username) do
       nil ->
-        fetch_and_store_user(username)
+        fetch_and_store_user(username, version)
 
       user ->
+        user = Repo.preload(user, :achievements)
+
         if stale?(user) do
           with {:ok, scraped_user} <- refresh_user(username) do
             run_background(fn ->
               scrape_and_store_projects(scraped_user.project_ids, scraped_user.id)
             end)
 
-            {:ok, normalize_user(scraped_user)}
+            {:ok, normalize_user(scraped_user, version)}
           end
         else
-          {:ok, normalize_user(user)}
+          {:ok, normalize_user(user, version)}
         end
     end
   end
 
-  def get_project(id) do
+  def get_project(id, opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
+
     case Repo.get(Project, id) |> Repo.preload([:user, :devlogs]) do
       nil ->
-        fetch_and_store_project(id)
+        fetch_and_store_project(id, version)
 
       project ->
         if stale?(project) do
@@ -51,46 +56,55 @@ defmodule Stardance.DB do
               scrape_and_store_devlogs(id, scraped_project.devlog_ids, scraped_project.user_id)
             end)
 
-            {:ok, normalize_project(scraped_project)}
+            {:ok, normalize_project(scraped_project, version)}
           end
         else
-          {:ok, normalize_project(project)}
+          {:ok, normalize_project(project, version)}
         end
     end
   end
 
-  def get_devlog_by_id(id) do
-    case Repo.get(Devlog, id) do
+  def get_devlog_by_id(id, opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
+
+    case Repo.get(Devlog, id) |> Repo.preload([:user, :comments]) do
       nil ->
         {:error, :not_found}
 
       devlog ->
         if stale?(devlog) do
           with {:ok, refreshed_devlog} <- refresh_devlog(devlog.project_id, id) do
-            {:ok, normalize_devlog(refreshed_devlog)}
+            refreshed_devlog = Repo.preload(refreshed_devlog, [:user, comments: :user])
+            {:ok, normalize_devlog(refreshed_devlog, version)}
           end
         else
-          {:ok, normalize_devlog(devlog)}
+          devlog = Repo.preload(devlog, comments: :user)
+          {:ok, normalize_devlog(devlog, version)}
         end
     end
   end
 
-  def get_project_devlog(project_id, devlog_id) do
-    case Repo.get_by(Devlog, id: devlog_id, project_id: project_id) do
+  def get_project_devlog(project_id, devlog_id, opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
+
+    case Repo.get_by(Devlog, id: devlog_id, project_id: project_id)
+         |> Repo.preload([:user, :comments]) do
       nil ->
         # Ensure the project is scraped first before fetching the devlog
         case get_project(project_id) do
-          {:ok, _project} -> fetch_and_store_devlog(project_id, devlog_id)
+          {:ok, _project} -> fetch_and_store_devlog(project_id, devlog_id, version)
           error -> error
         end
 
       devlog ->
         if stale?(devlog) do
           with {:ok, refreshed_devlog} <- refresh_devlog(project_id, devlog_id) do
-            {:ok, normalize_devlog(refreshed_devlog)}
+            refreshed_devlog = Repo.preload(refreshed_devlog, comments: :user)
+            {:ok, normalize_devlog(refreshed_devlog, version)}
           end
         else
-          {:ok, normalize_devlog(devlog)}
+          devlog = Repo.preload(devlog, comments: :user)
+          {:ok, normalize_devlog(devlog, version)}
         end
     end
   end
@@ -114,8 +128,9 @@ defmodule Stardance.DB do
   @max_per_page 100
 
   def list_projects(opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
     page = Keyword.get(opts, :page, 1)
-    limit = min(Keyword.get(opts, :limit, @default_per_page), @max_per_page)
+    limit = max(1, min(Keyword.get(opts, :limit, @default_per_page), @max_per_page))
     query = Keyword.get(opts, :query)
 
     base =
@@ -147,7 +162,7 @@ defmodule Stardance.DB do
         preload: [user: u]
       )
       |> Repo.all()
-      |> Enum.map(&normalize_project/1)
+      |> Enum.map(&normalize_project(&1, version))
 
     {:ok,
      %{
@@ -162,8 +177,9 @@ defmodule Stardance.DB do
   end
 
   def list_devlogs(opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
     page = Keyword.get(opts, :page, 1)
-    limit = min(Keyword.get(opts, :limit, @default_per_page), @max_per_page)
+    limit = max(1, min(Keyword.get(opts, :limit, @default_per_page), @max_per_page))
 
     base = from(d in Devlog)
 
@@ -177,10 +193,11 @@ defmodule Stardance.DB do
       from(d in base,
         order_by: [desc: d.inserted_at],
         offset: ^((page - 1) * limit),
-        limit: ^limit
+        limit: ^limit,
+        preload: [:user, comments: :user]
       )
       |> Repo.all()
-      |> Enum.map(&normalize_devlog/1)
+      |> Enum.map(&normalize_devlog(&1, version))
 
     {:ok,
      %{
@@ -195,8 +212,9 @@ defmodule Stardance.DB do
   end
 
   def list_project_devlogs(project_id, opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
     page = Keyword.get(opts, :page, 1)
-    limit = min(Keyword.get(opts, :limit, @default_per_page), @max_per_page)
+    limit = max(1, min(Keyword.get(opts, :limit, @default_per_page), @max_per_page))
 
     case Repo.get(Project, project_id) do
       nil ->
@@ -215,10 +233,11 @@ defmodule Stardance.DB do
           from(d in base,
             order_by: [desc: d.inserted_at],
             offset: ^((page - 1) * limit),
-            limit: ^limit
+            limit: ^limit,
+            preload: [:user, comments: :user]
           )
           |> Repo.all()
-          |> Enum.map(&normalize_devlog/1)
+          |> Enum.map(&normalize_devlog(&1, version))
 
         {:ok,
          %{
@@ -234,8 +253,9 @@ defmodule Stardance.DB do
   end
 
   def list_users(opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
     page = Keyword.get(opts, :page, 1)
-    limit = min(Keyword.get(opts, :limit, @default_per_page), @max_per_page)
+    limit = max(1, min(Keyword.get(opts, :limit, @default_per_page), @max_per_page))
     query = Keyword.get(opts, :query)
 
     base = from(u in User)
@@ -262,10 +282,11 @@ defmodule Stardance.DB do
       from(u in base,
         order_by: [desc: u.inserted_at],
         offset: ^((page - 1) * limit),
-        limit: ^limit
+        limit: ^limit,
+        preload: [:achievements]
       )
       |> Repo.all()
-      |> Enum.map(&normalize_user/1)
+      |> Enum.map(&normalize_user(&1, version))
 
     {:ok,
      %{
@@ -280,9 +301,10 @@ defmodule Stardance.DB do
   end
 
   def list_user_projects(username, opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
     username = String.trim_leading(username, "@")
     page = Keyword.get(opts, :page, 1)
-    limit = min(Keyword.get(opts, :limit, @default_per_page), @max_per_page)
+    limit = max(1, min(Keyword.get(opts, :limit, @default_per_page), @max_per_page))
 
     case Repo.get_by(User, username: username) do
       nil ->
@@ -309,7 +331,7 @@ defmodule Stardance.DB do
             preload: [user: u]
           )
           |> Repo.all()
-          |> Enum.map(&normalize_project/1)
+          |> Enum.map(&normalize_project(&1, version))
 
         {:ok,
          %{
@@ -324,21 +346,16 @@ defmodule Stardance.DB do
     end
   end
 
-  def get_devlog_comments(devlog_id) do
+  def get_devlog_comments(devlog_id, opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
+
     query =
       from c in Comment,
         left_join: u in User,
         on: c.user_id == u.id,
         where: c.devlog_id == ^devlog_id,
-        select: %{
-          id: c.id,
-          body: c.body,
-          user: %{
-            id: u.id,
-            username: u.username,
-            user_pfp: u.user_pfp
-          }
-        }
+        order_by: [desc: c.inserted_at],
+        preload: [user: u]
 
     comments = Repo.all(query)
 
@@ -348,11 +365,13 @@ defmodule Stardance.DB do
         _ -> {:ok, []}
       end
     else
-      {:ok, comments}
+      {:ok, normalize_comments(comments, version)}
     end
   end
 
-  def get_project_comments(project_id) do
+  def get_project_comments(project_id, opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
+
     devlog_ids =
       from(d in Devlog, where: d.project_id == ^project_id, select: d.id)
       |> Repo.all()
@@ -369,17 +388,9 @@ defmodule Stardance.DB do
           on: c.user_id == u.id,
           where: c.devlog_id in ^devlog_ids,
           order_by: [desc: c.inserted_at],
-          select: %{
-            id: c.id,
-            body: c.body,
-            user: %{
-              id: u.id,
-              username: u.username,
-              user_pfp: u.user_pfp
-            }
-          }
+          preload: [user: u]
 
-      {:ok, Repo.all(query)}
+      {:ok, normalize_comments(Repo.all(query), version)}
     end
   end
 
@@ -393,10 +404,10 @@ defmodule Stardance.DB do
     end
   end
 
-  defp fetch_and_store_user(username) do
+  defp fetch_and_store_user(username, version) do
     with {:ok, user} <- refresh_user(username) do
       run_background(fn -> scrape_and_store_projects(user.project_ids, user.id) end)
-      {:ok, normalize_user(user)}
+      {:ok, normalize_user(user, version)}
     end
   end
 
@@ -412,13 +423,13 @@ defmodule Stardance.DB do
     end
   end
 
-  defp fetch_and_store_project(id) do
+  defp fetch_and_store_project(id, version) do
     with {:ok, project} <- refresh_project(id) do
       run_background(fn ->
         scrape_and_store_devlogs(id, project.devlog_ids, project.user_id)
       end)
 
-      {:ok, normalize_project(project)}
+      {:ok, normalize_project(project, version)}
     end
   end
 
@@ -435,9 +446,10 @@ defmodule Stardance.DB do
     end
   end
 
-  defp fetch_and_store_devlog(project_id, devlog_id) do
+  defp fetch_and_store_devlog(project_id, devlog_id, version) do
     with {:ok, devlog} <- refresh_devlog(project_id, devlog_id) do
-      {:ok, normalize_devlog(devlog)}
+      devlog = Repo.preload(devlog, comments: :user)
+      {:ok, normalize_devlog(devlog, version)}
     end
   end
 
@@ -497,7 +509,9 @@ defmodule Stardance.DB do
           scrape_and_store_devlogs(project_id, data.devlog_ids, user_id)
         end
       end,
-      timeout: :infinity
+      timeout: :infinity,
+      exit_on_error: false,
+      ordered: false
     )
     |> Stream.run()
   end
@@ -515,7 +529,9 @@ defmodule Stardance.DB do
           scrape_and_store_comments(devlog_id)
         end
       end,
-      timeout: :infinity
+      timeout: :infinity,
+      exit_on_error: false,
+      ordered: false
     )
     |> Stream.run()
   end
@@ -530,7 +546,7 @@ defmodule Stardance.DB do
     case Repo.one(from u in User, where: u.username == ^username, select: u.id) do
       nil ->
         case get_user(username) do
-          {:ok, user} -> user.user_id
+          {:ok, user} -> user.id
           {:error, _} -> nil
         end
 
@@ -588,13 +604,31 @@ defmodule Stardance.DB do
   end
 
   defp upsert_record(User, attrs) do
-    struct(User)
-    |> User.changeset(attrs)
-    |> Repo.insert(
-      on_conflict: {:replace_all_except, [:id]},
-      conflict_target: :username,
-      returning: true
-    )
+    achievements = Map.get(attrs, :achievements, [])
+
+    result =
+      struct(User)
+      |> User.changeset(attrs)
+      |> Repo.insert(
+        on_conflict: {:replace_all_except, [:id]},
+        conflict_target: :username,
+        returning: true
+      )
+
+    with {:ok, user} <- result do
+      # Sync achievements: delete old ones, insert scraped ones
+      # Achievement schema uses naive_datetime timestamps, so use NaiveDateTime
+      now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+      Repo.delete_all(from a in Achievement, where: a.user_id == ^user.id)
+
+      Enum.each(achievements, fn a ->
+        %Achievement{}
+        |> Achievement.changeset_by_scrape(a, user.id, now)
+        |> Repo.insert()
+      end)
+    end
+
+    result
   end
 
   defp upsert_record(Comment, attrs) do
@@ -614,29 +648,75 @@ defmodule Stardance.DB do
     Task.Supervisor.start_child(Stardance.ScrapeSupervisor, fun)
   end
 
-  defp normalize_user(data) do
+  defp normalize_user(%User{} = user, version) do
+    case version do
+      :v1 -> normalize_user_v1(user)
+      _ -> normalize_user_v2(user)
+    end
+  end
+
+  defp normalize_project(%Project{} = project, version) do
+    case version do
+      :v1 -> normalize_project_v1(project)
+      _ -> normalize_project_v2(project)
+    end
+  end
+
+  defp normalize_devlog(%Devlog{} = devlog, version) do
+    case version do
+      :v1 -> normalize_devlog_v1(devlog)
+      _ -> normalize_devlog_v2(devlog)
+    end
+  end
+
+  defp normalize_comments(comments, version) when is_list(comments) do
+    case version do
+      :v1 -> normalize_comments_v1(comments)
+      _ -> normalize_comments_v2(comments)
+    end
+  end
+
+  defp normalize_user_v1(%User{} = user) do
     %{
-      id: data.id,
-      user_id: data.id,
-      username: data.username,
-      display_name: data.username,
-      avatar: data.user_pfp,
-      banner_url: data.banner_url,
-      user_pfp: data.user_pfp,
-      bio: data.bio || "Add a bio to tell folks who you are.",
-      devlog_count: length(data.devlog_ids || []),
-      project_count: length(data.project_ids || []),
-      project_ids: data.project_ids || [],
-      devlog_ids: data.devlog_ids || [],
-      ships: data.ships || 0,
-      votes: data.votes || 0,
-      slack_url: data.slack_url,
-      created_at: data.inserted_at,
-      updated_at: data.updated_at
+      id: user.id,
+      slack_id: user.slack_id,
+      display_name: user.username,
+      avatar: user.user_pfp,
+      project_ids: user.project_ids || [],
+      stardust: user.stardust
     }
   end
 
-  defp normalize_project(%Project{} = project) do
+  defp normalize_user_v2(%User{} = user) do
+    achievements =
+      if Ecto.assoc_loaded?(user.achievements) do
+        Enum.map(user.achievements, fn a ->
+          %{slug: a.slug, name: a.name, description: a.description}
+        end)
+      else
+        []
+      end
+
+    Map.merge(normalize_user_v1(user), %{
+      username: user.username,
+      stardust: user.stardust,
+      vote_count: user.vote_count || user.votes || 0,
+      like_count: user.like_count || 0,
+      achievements: achievements,
+      bio: user.bio,
+      banner_url: user.banner_url,
+      devlog_count: length(user.devlog_ids || []),
+      project_count: length(user.project_ids || []),
+      devlog_ids: user.devlog_ids || [],
+      ships: user.ships || 0,
+      votes: user.votes || 0,
+      slack_url: user.slack_url,
+      created_at: user.inserted_at,
+      updated_at: user.updated_at
+    })
+  end
+
+  defp normalize_project_v1(%Project{} = project) do
     devlog_ids =
       cond do
         project.devlog_ids != nil and project.devlog_ids != [] ->
@@ -653,37 +733,116 @@ defmodule Stardance.DB do
       id: project.id,
       title: project.title,
       description: project.description || "",
-      username: if(Ecto.assoc_loaded?(project.user), do: project.user.username, else: nil),
-      banner_url: project.banner_url,
-      devlog_count: project.devlog_count || 0,
-      devlog_ids: devlog_ids,
-      total_hours: project.total_hours || 0.0,
-      followers: project.followers || 0,
+      repo_url: project.repo_url,
       demo_url: project.demo_url,
-      sourcecode: project.source_code,
-      superstar: project.super_star || false,
+      readme_url: project.readme_url,
+      ai_declaration: project.ai_declaration,
+      ship_status: project.ship_status,
+      devlog_ids: devlog_ids,
+      banner_url: project.banner_url,
       created_at: project.inserted_at,
       updated_at: project.updated_at
     }
   end
 
-  defp normalize_devlog(%Devlog{} = devlog) do
+  defp normalize_project_v2(%Project{} = project) do
+    Map.merge(normalize_project_v1(project), %{
+      devlog_count: project.devlog_count || 0,
+      total_hours: project.total_hours || 0.0,
+      followers: project.followers || 0,
+      sourcecode: project.source_code,
+      superstar: project.super_star || false,
+      username: if(Ecto.assoc_loaded?(project.user), do: project.user.username, else: nil),
+      score: project.score,
+      user_id: project.user_id
+    })
+  end
+
+  defp normalize_devlog_v1(%Devlog{} = devlog) do
+    comments =
+      if Ecto.assoc_loaded?(devlog.comments) do
+        normalize_comments_v1(devlog.comments)
+      else
+        []
+      end
+
     %{
       id: devlog.id,
-      description: devlog.description || "",
-      image_urls: devlog.image_urls || [],
+      body: devlog.description || "",
+      comments_count: devlog.comments_count || 0,
+      duration_seconds: devlog.duration_seconds || 0,
+      likes_count: devlog.likes || 0,
+      scrapbook_url: devlog.scrapbook_url,
+      created_at: devlog.inserted_at,
+      updated_at: devlog.updated_at,
       media:
         Enum.map(devlog.image_urls || [], fn url ->
           %{url: url, content_type: "image/png"}
         end),
+      comments: comments
+    }
+  end
+
+  defp normalize_devlog_v2(%Devlog{} = devlog) do
+    Map.merge(normalize_devlog_v1(devlog), %{
+      description: devlog.description || "",
+      image_urls: devlog.image_urls || [],
       likes: devlog.likes || 0,
       views: devlog.views || 0,
-      duration_seconds: devlog.duration_seconds || 0,
-      comments_count: devlog.comments_count || 0,
       project_id: devlog.project_id,
-      user_id: devlog.user_id,
-      created_at: devlog.inserted_at,
-      updated_at: devlog.updated_at
+      user_id: devlog.user_id
+    })
+  end
+
+  defp normalize_comments_v1(comments) when is_list(comments) do
+    Enum.map(comments, &normalize_comment_v1/1)
+  end
+
+  defp normalize_comment_v1(%Comment{} = comment) do
+    author =
+      case comment.user do
+        %User{} ->
+          %{
+            id: comment.user.id,
+            display_name: comment.user.username,
+            avatar: comment.user.user_pfp
+          }
+
+        _ ->
+          nil
+      end
+
+    %{
+      id: comment.id,
+      author: author,
+      body: comment.body,
+      created_at: comment.inserted_at,
+      updated_at: comment.updated_at
+    }
+  end
+
+  defp normalize_comments_v2(comments) when is_list(comments) do
+    Enum.map(comments, &normalize_comment_v2/1)
+  end
+
+  defp normalize_comment_v2(%Comment{} = comment) do
+    user =
+      case comment.user do
+        %User{} ->
+          %{
+            id: comment.user.id,
+            username: comment.user.username,
+            user_pfp: comment.user.user_pfp
+          }
+
+        _ ->
+          nil
+      end
+
+    %{
+      id: comment.id,
+      body: comment.body,
+      user: user
     }
   end
 end

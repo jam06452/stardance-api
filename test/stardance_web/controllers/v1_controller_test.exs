@@ -33,6 +33,7 @@ defmodule StardanceWeb.API.V1ControllerTest do
     banner_url: "https://example.com/project-banner.png",
     demo_url: "https://example.com/demo",
     source_code: "https://github.com/test/project",
+    repo_url: "https://github.com/test/project",
     followers: 10,
     devlog_ids: [1, 2, 3],
     super_star: false,
@@ -137,15 +138,21 @@ defmodule StardanceWeb.API.V1ControllerTest do
       assert body["id"] == 100
       assert body["title"] == "Test Project"
       assert body["description"] == "A test project description"
-      assert body["username"] == "testuser"
       assert body["banner_url"] == "https://example.com/project-banner.png"
-      assert body["devlog_count"] == 3
       assert body["devlog_ids"] == [1, 2, 3]
-      assert body["total_hours"] == 12.5
-      assert body["followers"] == 10
       assert body["demo_url"] == "https://example.com/demo"
-      assert body["sourcecode"] == "https://github.com/test/project"
-      assert body["superstar"] == false
+      assert body["repo_url"] == "https://github.com/test/project"
+      assert body["readme_url"] == nil
+      assert body["ai_declaration"] == nil
+      assert body["ship_status"] == nil
+      assert body["created_at"] != nil
+      assert body["updated_at"] != nil
+      assert body["username"] == nil
+      assert body["devlog_count"] == nil
+      assert body["total_hours"] == nil
+      assert body["followers"] == nil
+      assert body["sourcecode"] == nil
+      assert body["superstar"] == nil
     end
 
     test "returns 404 when project not found in database and API call fails", %{conn: conn} do
@@ -210,7 +217,7 @@ defmodule StardanceWeb.API.V1ControllerTest do
       assert conn.status == 200
       body = Jason.decode!(conn.resp_body)
       assert length(body["users"]) == 1
-      assert hd(body["users"])["username"] == "otheruser"
+      assert hd(body["users"])["display_name"] == "otheruser"
     end
   end
 
@@ -222,19 +229,14 @@ defmodule StardanceWeb.API.V1ControllerTest do
 
       assert conn.status == 200
       body = Jason.decode!(conn.resp_body)
-      assert body["user_id"] == @valid_user_attrs.id
-      assert body["username"] == "testuser"
-      assert body["user_pfp"] == "https://example.com/pfp.png"
-      assert body["bio"] == "A test bio"
-      assert body["banner_url"] == "https://example.com/banner.png"
-      # devlog_count/project_count are computed from the length of devlog_ids/project_ids
-      assert body["devlog_count"] == 2
-      assert body["project_count"] == 2
+      assert body["id"] == @valid_user_attrs.id
+      assert body["slack_id"] == nil
+      assert body["display_name"] == "testuser"
+      assert body["avatar"] == "https://example.com/pfp.png"
       assert body["project_ids"] == [100, 200]
-      assert body["devlog_ids"] == [10, 20]
-      assert body["ships"] == 7
-      assert body["votes"] == 42
-      assert body["slack_url"] == "https://slack.com/test"
+      assert body["stardust"] == nil
+      assert body["username"] == nil
+      assert body["bio"] == nil
     end
 
     test "strips leading @ from username", %{conn: conn} do
@@ -244,7 +246,7 @@ defmodule StardanceWeb.API.V1ControllerTest do
 
       assert conn.status == 200
       body = Jason.decode!(conn.resp_body)
-      assert body["username"] == "testuser"
+      assert body["display_name"] == "testuser"
     end
 
     test "returns 404 when user not found in database and API call fails", %{conn: conn} do
@@ -266,6 +268,51 @@ defmodule StardanceWeb.API.V1ControllerTest do
       conn = get(conn, ~p"/api/v1/users/nonexistent_stale_user_test")
 
       # Stale data triggers a refresh from the external API, which fails with 404
+      assert conn.status == 404
+      body = Jason.decode!(conn.resp_body)
+      assert body["error"] == "Resource not found"
+    end
+  end
+
+  describe "GET /api/v1/users/:username/projects" do
+    setup do
+      {:ok, user} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
+
+      project_attrs = Map.put(@valid_project_attrs, :user_id, user.id)
+      {:ok, _project} = %Project{} |> Project.changeset(project_attrs) |> Repo.insert()
+
+      {:ok, user: user}
+    end
+
+    test "returns paginated projects for a user", %{conn: conn, user: user} do
+      conn = get(conn, ~p"/api/v1/users/#{user.username}/projects")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["projects"]) == 1
+      assert body["pagination"]["total_count"] == 1
+
+      project = hd(body["projects"])
+      assert project["id"] == 100
+      assert project["title"] == "Test Project"
+      assert project["repo_url"] == "https://github.com/test/project"
+      assert project["demo_url"] == "https://example.com/demo"
+      assert project["devlog_ids"] == [1, 2, 3]
+      assert project["username"] == nil
+      assert project["sourcecode"] == nil
+    end
+
+    test "strips leading @ from username", %{conn: conn, user: user} do
+      conn = get(conn, ~p"/api/v1/users/@#{user.username}/projects")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["projects"]) == 1
+    end
+
+    test "returns 404 when user does not exist", %{conn: conn} do
+      conn = get(conn, ~p"/api/v1/users/nonexistentuser/projects")
+
       assert conn.status == 404
       body = Jason.decode!(conn.resp_body)
       assert body["error"] == "Resource not found"
@@ -377,18 +424,17 @@ defmodule StardanceWeb.API.V1ControllerTest do
       assert conn.status == 200
       body = Jason.decode!(conn.resp_body)
       assert body["id"] == 1
-      assert body["description"] == "A test devlog entry"
-
-      assert body["image_urls"] == [
-               "https://example.com/img1.png",
-               "https://example.com/img2.png"
-             ]
-
-      assert body["likes"] == 15
-      assert body["views"] == 200
+      assert body["body"] == "A test devlog entry"
+      assert body["likes_count"] == 15
       assert body["duration_seconds"] == 3600
-      assert body["project_id"] == project.id
-      assert body["user_id"] == user.id
+      assert body["comments_count"] == 0
+      assert length(body["media"]) == 2
+      assert hd(body["media"])["url"] == "https://example.com/img1.png"
+      assert body["description"] == nil
+      assert body["likes"] == nil
+      assert body["views"] == nil
+      assert body["project_id"] == nil
+      assert body["user_id"] == nil
     end
 
     test "returns 404 when devlog not found in database", %{conn: conn} do
@@ -449,9 +495,14 @@ defmodule StardanceWeb.API.V1ControllerTest do
       assert conn.status == 200
       body = Jason.decode!(conn.resp_body)
       assert body["id"] == 1
-      assert body["project_id"] == project.id
-      assert body["user_id"] == user.id
-      assert body["description"] == "A test devlog entry"
+      assert body["body"] == "A test devlog entry"
+      assert body["likes_count"] == 15
+      assert body["duration_seconds"] == 3600
+      assert body["comments_count"] == 0
+      assert length(body["media"]) == 2
+      assert body["description"] == nil
+      assert body["project_id"] == nil
+      assert body["user_id"] == nil
     end
 
     test "returns 404 when devlog does not belong to the given project", %{conn: conn, user: user} do

@@ -7,15 +7,15 @@
   },
   "servers": [
     {
-      "url": "https://stardance.jam06452.uk",
+      "url": "http://localhost:4000",
       "description": "Stardance API Server"
     }
   ],
   "paths": {
     "/api/v1/projects": {
       "get": {
-        "operationId": "listProjects",
-        "summary": "List projects",
+        "operationId": "listProjectsV1",
+        "summary": "List projects (V1)",
         "description": "Fetch a paginated list of all projects. Supports optional search query and limit.",
         "parameters": [
           {
@@ -50,7 +50,7 @@
                   "properties": {
                     "projects": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/Project" }
+                      "items": { "$ref": "#/components/schemas/ProjectV1" }
                     },
                     "pagination": { "$ref": "#/components/schemas/Pagination" }
                   }
@@ -63,8 +63,8 @@
     },
     "/api/v1/projects/{id}": {
       "get": {
-        "operationId": "getProject",
-        "summary": "Get a project",
+        "operationId": "getProjectV1",
+        "summary": "Get a project (V1)",
         "parameters": [
           {
             "name": "id",
@@ -79,7 +79,7 @@
             "description": "Project found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Project" }
+                "schema": { "$ref": "#/components/schemas/ProjectV1" }
               }
             }
           },
@@ -96,8 +96,8 @@
     },
     "/api/v1/projects/{id}/devlogs": {
       "get": {
-        "operationId": "listProjectDevlogs",
-        "summary": "List devlogs for a project",
+        "operationId": "listProjectDevlogsV1",
+        "summary": "List devlogs for a project (V1)",
         "description": "Fetch a paginated list of devlogs belonging to a specific project.",
         "parameters": [
           {
@@ -132,7 +132,7 @@
                   "properties": {
                     "devlogs": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/Devlog" }
+                      "items": { "$ref": "#/components/schemas/DevlogV1" }
                     },
                     "pagination": { "$ref": "#/components/schemas/Pagination" }
                   }
@@ -153,8 +153,8 @@
     },
     "/api/v1/projects/{id}/devlogs/{devlog_id}": {
       "get": {
-        "operationId": "getProjectDevlog",
-        "summary": "Get a devlog scoped to a project",
+        "operationId": "getProjectDevlogV1",
+        "summary": "Get a devlog scoped to a project (V1)",
         "parameters": [
           {
             "name": "id",
@@ -176,7 +176,7 @@
             "description": "Devlog found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Devlog" }
+                "schema": { "$ref": "#/components/schemas/DevlogV1" }
               }
             }
           },
@@ -193,8 +193,8 @@
     },
     "/api/v1/devlogs": {
       "get": {
-        "operationId": "listDevlogs",
-        "summary": "List all devlogs",
+        "operationId": "listDevlogsV1",
+        "summary": "List all devlogs (V1)",
         "description": "Fetch a paginated list of all devlogs across all projects.",
         "parameters": [
           {
@@ -222,7 +222,7 @@
                   "properties": {
                     "devlogs": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/Devlog" }
+                      "items": { "$ref": "#/components/schemas/DevlogV1" }
                     },
                     "pagination": { "$ref": "#/components/schemas/Pagination" }
                   }
@@ -235,8 +235,8 @@
     },
     "/api/v1/devlogs/{id}": {
       "get": {
-        "operationId": "getDevlog",
-        "summary": "Get a devlog by ID",
+        "operationId": "getDevlogV1",
+        "summary": "Get a devlog by ID (V1)",
         "parameters": [
           {
             "name": "id",
@@ -251,7 +251,7 @@
             "description": "Devlog found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Devlog" }
+                "schema": { "$ref": "#/components/schemas/DevlogV1" }
               }
             }
           },
@@ -268,8 +268,8 @@
     },
     "/api/v1/users": {
       "get": {
-        "operationId": "listUsers",
-        "summary": "List users",
+        "operationId": "listUsersV1",
+        "summary": "List users (V1)",
         "description": "Fetch a paginated list of all users. Supports optional search query.",
         "parameters": [
           {
@@ -304,7 +304,7 @@
                   "properties": {
                     "users": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/User" }
+                      "items": { "$ref": "#/components/schemas/UserV1" }
                     },
                     "pagination": { "$ref": "#/components/schemas/Pagination" }
                   }
@@ -317,8 +317,8 @@
     },
     "/api/v1/users/{username}": {
       "get": {
-        "operationId": "getUser",
-        "summary": "Get a user profile",
+        "operationId": "getUserV1",
+        "summary": "Get a user profile (V1)",
         "parameters": [
           {
             "name": "username",
@@ -333,7 +333,7 @@
             "description": "User found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/User" }
+                "schema": { "$ref": "#/components/schemas/UserV1" }
               }
             }
           },
@@ -348,82 +348,10 @@
         }
       }
     },
-    "/api/v2/comments/devlog/{id}": {
+    "/api/v1/users/{username}/projects": {
       "get": {
-        "operationId": "getDevlogComments",
-        "summary": "Get all comments for a devlog",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Devlog ID",
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Comments for the devlog",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/Comment" }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Devlog not found",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v2/comments/project/{id}": {
-      "get": {
-        "operationId": "getProjectComments",
-        "summary": "Get all comments across all devlogs of a project",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Project ID",
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Comments for the project (across all of its devlogs)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/Comment" }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Project not found",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v2/users/{username}/projects": {
-      "get": {
-        "operationId": "listUserProjects",
-        "summary": "List projects for a user",
+        "operationId": "listUserProjectsV1",
+        "summary": "List projects for a user (V1)",
         "description": "Fetch a paginated list of projects belonging to a specific user.",
         "parameters": [
           {
@@ -458,7 +386,7 @@
                   "properties": {
                     "projects": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/Project" }
+                      "items": { "$ref": "#/components/schemas/ProjectV1" }
                     },
                     "pagination": { "$ref": "#/components/schemas/Pagination" }
                   }
@@ -468,6 +396,471 @@
           },
           "404": {
             "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/projects": {
+      "get": {
+        "operationId": "listProjectsV2",
+        "summary": "List projects (V2)",
+        "description": "Fetch a paginated list of all projects with V2 extended fields. Supports optional search query and limit.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number for pagination (default: 1)",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Number of results per page (max 100, default: 20)",
+            "schema": { "type": "integer", "maximum": 100 }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "description": "Search projects by title or description",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "projects": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ProjectV2" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/projects/{id}": {
+      "get": {
+        "operationId": "getProjectV2",
+        "summary": "Get a project (V2)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Project ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProjectV2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/projects/{id}/devlogs": {
+      "get": {
+        "operationId": "listProjectDevlogsV2",
+        "summary": "List devlogs for a project (V2)",
+        "description": "Fetch a paginated list of devlogs belonging to a specific project with V2 extended fields.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Project ID",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number for pagination (default: 1)",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Number of results per page (max 100, default: 20)",
+            "schema": { "type": "integer", "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of devlogs for the project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "devlogs": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/DevlogV2" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/projects/{id}/devlogs/{devlog_id}": {
+      "get": {
+        "operationId": "getProjectDevlogV2",
+        "summary": "Get a devlog scoped to a project (V2)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Project ID",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "devlog_id",
+            "in": "path",
+            "required": true,
+            "description": "Devlog ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Devlog found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DevlogV2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Devlog or project not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/devlogs": {
+      "get": {
+        "operationId": "listDevlogsV2",
+        "summary": "List all devlogs (V2)",
+        "description": "Fetch a paginated list of all devlogs across all projects with V2 extended fields.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number for pagination (default: 1)",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Number of results per page (max 100, default: 20)",
+            "schema": { "type": "integer", "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of all devlogs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "devlogs": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/DevlogV2" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/devlogs/{id}": {
+      "get": {
+        "operationId": "getDevlogV2",
+        "summary": "Get a devlog by ID (V2)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Devlog ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Devlog found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DevlogV2" }
+              }
+            }
+          },
+          "404": {
+            "description": "Devlog not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/users": {
+      "get": {
+        "operationId": "listUsersV2",
+        "summary": "List users (V2)",
+        "description": "Fetch a paginated list of all users with V2 extended fields. Supports optional search query.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number for pagination (default: 1)",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Number of results per page (max 100, default: 20)",
+            "schema": { "type": "integer", "maximum": 100 }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "description": "Search users by username or bio",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "users": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/UserV2" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/users/{username}": {
+      "get": {
+        "operationId": "getUserV2",
+        "summary": "Get a user profile (V2)",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "description": "Username (with or without \"@\" prefix)",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserV2" }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/users/{username}/projects": {
+      "get": {
+        "operationId": "listUserProjectsV2",
+        "summary": "List projects for a user (V2)",
+        "description": "Fetch a paginated list of projects belonging to a specific user with V2 extended fields.",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "description": "Username (with or without \"@\" prefix)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number for pagination (default: 1)",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Number of results per page (max 100, default: 20)",
+            "schema": { "type": "integer", "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of the user's projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "projects": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/ProjectV2" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/comments/devlog/{id}": {
+      "get": {
+        "operationId": "getDevlogCommentsV2",
+        "summary": "Get all comments for a devlog (V2)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Devlog ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comments for the devlog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/CommentV2" }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Devlog not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/comments/project/{id}": {
+      "get": {
+        "operationId": "getProjectCommentsV2",
+        "summary": "Get all comments across all devlogs of a project (V2)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Project ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comments for the project (across all of its devlogs)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/CommentV2" }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Error" }
@@ -489,7 +882,7 @@
           "next_page": { "type": "integer", "nullable": true }
         }
       },
-      "Project": {
+      "ProjectV1": {
         "type": "object",
         "properties": {
           "id": {
@@ -498,32 +891,49 @@
           },
           "title": { "type": "string" },
           "description": { "type": "string" },
-          "username": {
-            "type": "string",
-            "description": "Author's username (without @)"
-          },
-          "banner_url": { "type": "string", "nullable": true, "format": "uri" },
-          "devlog_count": { "type": "integer" },
-          "devlog_ids": { "type": "array", "items": { "type": "integer" } },
-          "total_hours": { "type": "number", "format": "float" },
-          "followers": { "type": "integer" },
+          "repo_url": { "type": "string", "nullable": true, "format": "uri" },
           "demo_url": { "type": "string", "nullable": true, "format": "uri" },
-          "sourcecode": { "type": "string", "nullable": true, "format": "uri" },
-          "superstar": { "type": "boolean" },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "When the project was first scraped"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "When the project data was last updated"
-          }
+          "readme_url": { "type": "string", "nullable": true, "format": "uri" },
+          "ai_declaration": { "type": "string", "nullable": true },
+          "ship_status": { "type": "string", "nullable": true },
+          "devlog_ids": { "type": "array", "items": { "type": "integer" } },
+          "banner_url": { "type": "string", "nullable": true, "format": "uri" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
         },
         "required": ["id", "title"]
       },
-      "User": {
+      "ProjectV2": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ProjectV1" },
+          {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string",
+                "nullable": true,
+                "description": "Author's username (without @)"
+              },
+              "devlog_count": { "type": "integer" },
+              "total_hours": { "type": "number", "format": "float" },
+              "followers": { "type": "integer" },
+              "sourcecode": {
+                "type": "string",
+                "nullable": true,
+                "format": "uri"
+              },
+              "superstar": { "type": "boolean" },
+              "score": {
+                "type": "number",
+                "nullable": true,
+                "format": "float"
+              },
+              "user_id": { "type": "string", "format": "uuid" }
+            }
+          }
+        ]
+      },
+      "UserV1": {
         "type": "object",
         "properties": {
           "id": {
@@ -531,12 +941,7 @@
             "format": "uuid",
             "description": "Internal user ID"
           },
-          "user_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Internal user ID (alias for id)"
-          },
-          "username": { "type": "string" },
+          "slack_id": { "type": "string", "nullable": true },
           "display_name": {
             "type": "string",
             "description": "Display name (same as username)"
@@ -545,47 +950,83 @@
             "type": "string",
             "nullable": true,
             "format": "uri",
-            "description": "Profile picture URL (alias for user_pfp)"
-          },
-          "devlog_count": { "type": "integer" },
-          "banner_url": { "type": "string", "nullable": true, "format": "uri" },
-          "user_pfp": {
-            "type": "string",
-            "nullable": true,
-            "format": "uri",
             "description": "Profile picture URL"
           },
-          "bio": { "type": "string" },
-          "project_count": { "type": "integer" },
           "project_ids": { "type": "array", "items": { "type": "integer" } },
-          "devlog_ids": { "type": "array", "items": { "type": "integer" } },
-          "ships": { "type": "integer" },
-          "votes": { "type": "integer" },
-          "slack_url": { "type": "string", "nullable": true, "format": "uri" },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "When the user was first scraped"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "When the user data was last updated"
-          }
+          "stardust": { "type": "integer", "nullable": true }
         },
-        "required": ["user_id", "username"]
+        "required": ["id", "display_name"]
       },
-      "Devlog": {
+      "UserV2": {
+        "allOf": [
+          { "$ref": "#/components/schemas/UserV1" },
+          {
+            "type": "object",
+            "properties": {
+              "username": { "type": "string" },
+              "user_pfp": {
+                "type": "string",
+                "nullable": true,
+                "format": "uri"
+              },
+              "bio": { "type": "string", "nullable": true },
+              "banner_url": {
+                "type": "string",
+                "nullable": true,
+                "format": "uri"
+              },
+              "devlog_count": { "type": "integer" },
+              "project_count": { "type": "integer" },
+              "devlog_ids": { "type": "array", "items": { "type": "integer" } },
+              "ships": { "type": "integer" },
+              "votes": { "type": "integer" },
+              "vote_count": { "type": "integer" },
+              "like_count": { "type": "integer" },
+              "slack_url": {
+                "type": "string",
+                "nullable": true,
+                "format": "uri"
+              },
+              "achievements": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Achievement" }
+              },
+              "created_at": { "type": "string", "format": "date-time" },
+              "updated_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        ]
+      },
+      "Achievement": {
+        "type": "object",
+        "properties": {
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true }
+        },
+        "required": ["slug", "name"]
+      },
+      "DevlogV1": {
         "type": "object",
         "properties": {
           "id": {
             "type": "integer",
             "description": "Devlog ID (from stardance.hackclub.com)"
           },
-          "description": { "type": "string" },
-          "image_urls": {
-            "type": "array",
-            "items": { "type": "string", "format": "uri" }
+          "body": { "type": "string", "description": "Devlog text content" },
+          "comments_count": {
+            "type": "integer",
+            "description": "Total number of comments"
+          },
+          "duration_seconds": {
+            "type": "integer",
+            "description": "Duration in seconds"
+          },
+          "likes_count": { "type": "integer" },
+          "scrapbook_url": {
+            "type": "string",
+            "nullable": true,
+            "format": "uri"
           },
           "media": {
             "type": "array",
@@ -598,39 +1039,58 @@
               }
             }
           },
-          "likes": { "type": "integer" },
-          "views": { "type": "integer" },
-          "duration_seconds": {
-            "type": "integer",
-            "description": "Duration in seconds"
+          "comments": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CommentV1" }
           },
-          "comments_count": {
-            "type": "integer",
-            "description": "Total number of comments on this devlog"
-          },
-          "project_id": { "type": "integer" },
-          "user_id": { "type": "string", "format": "uuid" },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "When the devlog was first scraped"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "When the devlog data was last updated"
-          }
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
         },
-        "required": ["id"]
+        "required": ["id", "body"]
       },
-      "Comment": {
+      "DevlogV2": {
+        "allOf": [
+          { "$ref": "#/components/schemas/DevlogV1" },
+          {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "image_urls": {
+                "type": "array",
+                "items": { "type": "string", "format": "uri" }
+              },
+              "likes": { "type": "integer" },
+              "views": { "type": "integer" },
+              "project_id": { "type": "integer" },
+              "user_id": { "type": "string", "format": "uuid" }
+            }
+          }
+        ]
+      },
+      "CommentV1": {
         "type": "object",
         "properties": {
           "id": { "type": "integer", "description": "Internal comment ID" },
-          "body": {
-            "type": "string",
-            "description": "Comment body (may contain HTML)"
+          "author": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "display_name": { "type": "string" },
+              "avatar": { "type": "string", "nullable": true, "format": "uri" }
+            }
           },
+          "body": { "type": "string", "description": "Comment body" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "body"]
+      },
+      "CommentV2": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "description": "Internal comment ID" },
+          "body": { "type": "string", "description": "Comment body" },
           "user": {
             "nullable": true,
             "oneOf": [{ "$ref": "#/components/schemas/CommentUser" }],
@@ -673,9 +1133,18 @@
     "stardance-api-100/GET/api/v1/devlogs/{id}",
     "stardance-api-100/GET/api/v1/users",
     "stardance-api-100/GET/api/v1/users/{username}",
+    "stardance-api-100/GET/api/v1/users/{username}/projects",
+    "stardance-api-100/GET/api/v2/projects",
+    "stardance-api-100/GET/api/v2/projects/{id}",
+    "stardance-api-100/GET/api/v2/projects/{id}/devlogs",
+    "stardance-api-100/GET/api/v2/projects/{id}/devlogs/{devlog_id}",
+    "stardance-api-100/GET/api/v2/devlogs",
+    "stardance-api-100/GET/api/v2/devlogs/{id}",
+    "stardance-api-100/GET/api/v2/users",
+    "stardance-api-100/GET/api/v2/users/{username}",
+    "stardance-api-100/GET/api/v2/users/{username}/projects",
     "stardance-api-100/GET/api/v2/comments/devlog/{id}",
     "stardance-api-100/GET/api/v2/comments/project/{id}",
-    "stardance-api-100/GET/api/v2/users/{username}/projects",
     "stardance-api-100/models"
   ]
 }
