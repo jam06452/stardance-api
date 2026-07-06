@@ -68,7 +68,8 @@ defmodule Stardance.MixProject do
       {:bandit, "~> 1.5"},
       {:floki, "~> 0.38.4"},
       {:dotenvy, "~> 1.1.1"},
-      {:amur, "~> 0.1.1"}
+      {:amur, "~> 0.1.1"},
+      {:cors_plug, "~> 3.0"}
     ]
   end
 

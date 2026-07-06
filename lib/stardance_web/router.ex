@@ -12,6 +12,7 @@ defmodule StardanceWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug CORSPlug, origin: "*"
   end
 
   pipeline :authenticate do
