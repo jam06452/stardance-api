@@ -11,9 +11,19 @@
       "description": "Stardance API Server"
     }
   ],
+  "tags": [
+    { "name": "V1 - Projects" },
+    { "name": "V1 - Devlogs" },
+    { "name": "V1 - Users" },
+    { "name": "V2 - Projects" },
+    { "name": "V2 - Devlogs" },
+    { "name": "V2 - Users" },
+    { "name": "V2 - Comments" }
+  ],
   "paths": {
     "/api/v1/projects": {
       "get": {
+        "tags": ["V1 - Projects"],
         "operationId": "listProjectsV1",
         "summary": "List projects (V1)",
         "description": "Fetch a paginated list of all projects. Supports optional search query and limit.",
@@ -63,6 +73,7 @@
     },
     "/api/v1/projects/{id}": {
       "get": {
+        "tags": ["V1 - Projects"],
         "operationId": "getProjectV1",
         "summary": "Get a project (V1)",
         "parameters": [
@@ -96,6 +107,7 @@
     },
     "/api/v1/projects/{id}/devlogs": {
       "get": {
+        "tags": ["V1 - Projects"],
         "operationId": "listProjectDevlogsV1",
         "summary": "List devlogs for a project (V1)",
         "description": "Fetch a paginated list of devlogs belonging to a specific project.",
@@ -153,6 +165,7 @@
     },
     "/api/v1/projects/{id}/devlogs/{devlog_id}": {
       "get": {
+        "tags": ["V1 - Projects"],
         "operationId": "getProjectDevlogV1",
         "summary": "Get a devlog scoped to a project (V1)",
         "parameters": [
@@ -193,6 +206,7 @@
     },
     "/api/v1/devlogs": {
       "get": {
+        "tags": ["V1 - Devlogs"],
         "operationId": "listDevlogsV1",
         "summary": "List all devlogs (V1)",
         "description": "Fetch a paginated list of all devlogs across all projects.",
@@ -235,6 +249,7 @@
     },
     "/api/v1/devlogs/{id}": {
       "get": {
+        "tags": ["V1 - Devlogs"],
         "operationId": "getDevlogV1",
         "summary": "Get a devlog by ID (V1)",
         "parameters": [
@@ -268,6 +283,7 @@
     },
     "/api/v1/users": {
       "get": {
+        "tags": ["V1 - Users"],
         "operationId": "listUsersV1",
         "summary": "List users (V1)",
         "description": "Fetch a paginated list of all users. Supports optional search query.",
@@ -317,6 +333,7 @@
     },
     "/api/v1/users/{username}": {
       "get": {
+        "tags": ["V1 - Users"],
         "operationId": "getUserV1",
         "summary": "Get a user profile (V1)",
         "parameters": [
@@ -350,6 +367,7 @@
     },
     "/api/v1/users/{username}/projects": {
       "get": {
+        "tags": ["V1 - Users"],
         "operationId": "listUserProjectsV1",
         "summary": "List projects for a user (V1)",
         "description": "Fetch a paginated list of projects belonging to a specific user.",
@@ -407,6 +425,7 @@
     },
     "/api/v2/projects": {
       "get": {
+        "tags": ["V2 - Projects"],
         "operationId": "listProjectsV2",
         "summary": "List projects (V2)",
         "description": "Fetch a paginated list of all projects with V2 extended fields. Supports optional search query and limit.",
@@ -456,6 +475,7 @@
     },
     "/api/v2/projects/{id}": {
       "get": {
+        "tags": ["V2 - Projects"],
         "operationId": "getProjectV2",
         "summary": "Get a project (V2)",
         "parameters": [
@@ -489,6 +509,7 @@
     },
     "/api/v2/projects/{id}/devlogs": {
       "get": {
+        "tags": ["V2 - Projects"],
         "operationId": "listProjectDevlogsV2",
         "summary": "List devlogs for a project (V2)",
         "description": "Fetch a paginated list of devlogs belonging to a specific project with V2 extended fields.",
@@ -546,6 +567,7 @@
     },
     "/api/v2/projects/{id}/devlogs/{devlog_id}": {
       "get": {
+        "tags": ["V2 - Projects"],
         "operationId": "getProjectDevlogV2",
         "summary": "Get a devlog scoped to a project (V2)",
         "parameters": [
@@ -586,6 +608,7 @@
     },
     "/api/v2/devlogs": {
       "get": {
+        "tags": ["V2 - Devlogs"],
         "operationId": "listDevlogsV2",
         "summary": "List all devlogs (V2)",
         "description": "Fetch a paginated list of all devlogs across all projects with V2 extended fields.",
@@ -628,6 +651,7 @@
     },
     "/api/v2/devlogs/{id}": {
       "get": {
+        "tags": ["V2 - Devlogs"],
         "operationId": "getDevlogV2",
         "summary": "Get a devlog by ID (V2)",
         "parameters": [
@@ -661,6 +685,7 @@
     },
     "/api/v2/users": {
       "get": {
+        "tags": ["V2 - Users"],
         "operationId": "listUsersV2",
         "summary": "List users (V2)",
         "description": "Fetch a paginated list of all users with V2 extended fields. Supports optional search query.",
@@ -710,6 +735,7 @@
     },
     "/api/v2/users/{username}": {
       "get": {
+        "tags": ["V2 - Users"],
         "operationId": "getUserV2",
         "summary": "Get a user profile (V2)",
         "parameters": [
@@ -743,6 +769,7 @@
     },
     "/api/v2/users/{username}/projects": {
       "get": {
+        "tags": ["V2 - Users"],
         "operationId": "listUserProjectsV2",
         "summary": "List projects for a user (V2)",
         "description": "Fetch a paginated list of projects belonging to a specific user with V2 extended fields.",
@@ -800,6 +827,7 @@
     },
     "/api/v2/comments/devlog/{id}": {
       "get": {
+        "tags": ["V2 - Comments"],
         "operationId": "getDevlogCommentsV2",
         "summary": "Get all comments for a devlog (V2)",
         "parameters": [
@@ -836,6 +864,7 @@
     },
     "/api/v2/comments/project/{id}": {
       "get": {
+        "tags": ["V2 - Comments"],
         "operationId": "getProjectCommentsV2",
         "summary": "Get all comments across all devlogs of a project (V2)",
         "parameters": [
