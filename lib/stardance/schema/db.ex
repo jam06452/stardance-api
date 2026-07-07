@@ -300,9 +300,48 @@ defmodule Stardance.DB do
      }}
   end
 
+  def list_top_projects(opts \\ []) do
+    version = Keyword.get(opts, :version, :v2)
+    limit = max(1, min(Keyword.get(opts, :limit, 10), @max_per_page))
+    page = Keyword.get(opts, :page, 1)
+
+    total_count =
+      from(p in Project, select: count(p.id))
+      |> Repo.one()
+
+    total_pages = ceil(total_count / limit)
+
+    projects =
+      from(p in Project,
+        left_join: u in User,
+        on: p.user_id == u.id,
+        order_by: [desc: p.score, desc: p.inserted_at],
+        offset: ^((page - 1) * limit),
+        limit: ^limit,
+        preload: [user: u]
+      )
+      |> Repo.all()
+
+    ranked_projects =
+      Enum.with_index(projects, (page - 1) * limit + 1)
+      |> Enum.map(fn {project, rank} ->
+        normalize_project(project, version) |> Map.put(:rank, rank)
+      end)
+
+    {:ok,
+     %{
+       projects: ranked_projects,
+       pagination: %{
+         current_page: page,
+         total_pages: total_pages,
+         total_count: total_count,
+         next_page: (page < total_pages && page + 1) || nil
+       }
+     }}
+  end
+
   def list_user_projects(username, opts \\ []) do
     version = Keyword.get(opts, :version, :v2)
-    username = String.trim_leading(username, "@")
     page = Keyword.get(opts, :page, 1)
     limit = max(1, min(Keyword.get(opts, :limit, @default_per_page), @max_per_page))
 

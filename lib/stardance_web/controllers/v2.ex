@@ -75,6 +75,12 @@ defmodule StardanceWeb.API.V2Controller do
     end
   end
 
+  def top_projects(conn, params) do
+    opts = params |> parse_pagination_params() |> Keyword.put(:version, :v2)
+    {:ok, data} = Stardance.DB.list_top_projects(opts)
+    json(conn, data)
+  end
+
   # ── Comments ──────────────────────────────────────────────────────────
 
   def devlog_comments(conn, %{"id" => id}) do

@@ -57,6 +57,7 @@ defmodule StardanceWeb.Router do
   scope "/api/v2", StardanceWeb do
     pipe_through :api
 
+    get "/projects/top", API.V2Controller, :top_projects
     get "/projects", API.V2Controller, :index
     get "/projects/:id", API.V2Controller, :projects
     get "/projects/:id/devlogs", API.V2Controller, :project_devlogs

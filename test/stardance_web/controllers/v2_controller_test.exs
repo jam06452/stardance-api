@@ -158,6 +158,81 @@ defmodule StardanceWeb.API.V2ControllerTest do
     end
   end
 
+  describe "GET /api/v2/projects/top" do
+    setup do
+      {:ok, user} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
+
+      low_project_attrs =
+        Map.merge(@valid_project_attrs, %{
+          user_id: user.id,
+          title: "Low Score Project",
+          score: 1.0
+        })
+
+      {:ok, _low_project} = %Project{} |> Project.changeset(low_project_attrs) |> Repo.insert()
+
+      high_project_attrs =
+        Map.merge(@valid_project_attrs, %{
+          id: 101,
+          user_id: user.id,
+          title: "High Score Project",
+          score: 100.0
+        })
+
+      {:ok, _high_project} = %Project{} |> Project.changeset(high_project_attrs) |> Repo.insert()
+
+      {:ok, user: user}
+    end
+
+    test "returns top projects ranked by score with default limit of 10", %{conn: conn} do
+      conn = get(conn, ~p"/api/v2/projects/top")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["projects"]) == 2
+      assert body["pagination"]["total_count"] == 2
+
+      first = hd(body["projects"])
+      assert first["rank"] == 1
+      assert first["title"] == "High Score Project"
+      assert first["score"] == 100.0
+
+      second = Enum.at(body["projects"], 1)
+      assert second["rank"] == 2
+      assert second["title"] == "Low Score Project"
+      assert second["score"] == 1.0
+    end
+
+    test "respects custom limit", %{conn: conn} do
+      conn = get(conn, ~p"/api/v2/projects/top?limit=1")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["projects"]) == 1
+      assert hd(body["projects"])["rank"] == 1
+    end
+
+    test "respects page offset for ranks", %{conn: conn} do
+      conn = get(conn, ~p"/api/v2/projects/top?limit=1&page=2")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert length(body["projects"]) == 1
+      assert hd(body["projects"])["rank"] == 2
+    end
+
+    test "returns empty list when no projects exist", %{conn: conn} do
+      Repo.delete_all(Project)
+
+      conn = get(conn, ~p"/api/v2/projects/top")
+
+      assert conn.status == 200
+      body = Jason.decode!(conn.resp_body)
+      assert body["projects"] == []
+      assert body["pagination"]["total_count"] == 0
+    end
+  end
+
   describe "GET /api/v2/projects" do
     setup do
       {:ok, user} = User.changeset(struct(User), @valid_user_attrs) |> Repo.insert()
